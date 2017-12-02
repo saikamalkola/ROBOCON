@@ -13,16 +13,17 @@
 #define DELAY 50
 
 char address = 0x00;
-uint8_t ser_enable[4] = {32, 34, 36, 38};
+uint8_t ser_enable[4] = {46, 38, 30, 22};
+//uint8_t Jpulse[4] = {48, 40, 32, 24};
 //Sensor Data
 int sensor_data[4] = {0, 0, 0, 0};
 /*
   0 - Front
-  1 - Left
-  2 - Back
+  1 - Back
+  2 - Leftss
   3 - Right
 
-  All Sensors on Serial1
+  All Sensors on Serial3
 */
 char sensor_addr[4] = {0x01, 0x02, 0x03, 0x04};
 
@@ -50,24 +51,24 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   double present = micros();
-read_sensors();
- Serial.println(String(micros() - present));
+  read_sensors();
+  Serial.println(String(micros() - present));
 }
 
 void read_sensors()
 {
-  for (int i = 0; i < 3; i = i + 2)
+  for (int i = 0; i < 2; i++)
   {
-    digitalWrite(ser_enable[i], LOW);  // Set Serial1EN to LOW to request UART data
-    while (Serial1.available() <= 0);  // Wait for data to be available
-    sensor_data[i] = Serial1.read();    // Read incoming data and store in variable positionVal
+    digitalWrite(ser_enable[i], LOW);  // Set Serial3EN to LOW to request UART data
+    while (Serial3.available() <= 0);  // Wait for data to be available
+    sensor_data[i] = Serial3.read();    // Read incoming data and store in variable positionVal
     digitalWrite(ser_enable[i], HIGH);   // Stop requesting for UART data
   }
-  for(int i = 0; i < 4; i++)
+  for (int i = 0; i < 4; i++)
   {
     Serial.print(String(sensor_data[i]) + " ");
   }
- // Serial.println("");
+  // Serial.println("");
 }
 
 void calibrate()
@@ -76,7 +77,7 @@ void calibrate()
   {
     address = sensor_addr[i];
     send_command('C', 0x00);
-    delay(500);
+    delay(DELAY);
   }
 }
 void set_sensor_settings()
@@ -104,10 +105,11 @@ void set_sensor_settings()
 }
 void init_sensors()
 {
-  Serial1.begin(9600); // Start Serial1 communication
-  Serial1.flush();   // Clear Serial1 buffer
+  Serial3.begin(9600); // Start Serial3 communication
+  Serial3.flush();   // Clear Serial3 buffer
   for (int i = 0; i < 4; i++)
   {
+   // pinMode(Jpulse[i], INPUT);
     pinMode(ser_enable[i], OUTPUT);
     digitalWrite(ser_enable[i], HIGH);
   }
@@ -117,9 +119,9 @@ void send_command(char command, char data) {
 
   char checksum = address + command + data;
 
-  Serial1.write(address);
-  Serial1.write(command);
-  Serial1.write(data);
-  Serial1.write(checksum);
+  Serial3.write(address);
+  Serial3.write(command);
+  Serial3.write(data);
+  Serial3.write(checksum);
 
 }
