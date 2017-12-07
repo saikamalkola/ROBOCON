@@ -1,162 +1,187 @@
+#define max_speed 150
+#define DELAY 50
 
-#define max_speed 50
-
+float J[4][3] = {{13.1579, -13.1579, -8.4211}, {13.1579, 13.1579, 8.4211}, {13.1579, 13.1579, -8.4211}, {13.1579, -13.1579, 8.4211}};
+/*
+  Conversion Matrix
+  13.1579 -13.1579 -8.4211
+  13.1579  13.1579  8.4211
+  13.1579  13.1579 -8.4211
+  13.1579 -13.1579  8.4211
+*/
+float Vsp[3] = {0, 0, 0};
+float base_speed = 0.5; //in m/s
+//Vmax = 3.725
+//Vx,Vy,W
+float max_div = 255.0, max_rpm = 468.0;
+float conv_factor = max_div / max_rpm;
+float pi = 3.1416;
+float w[4] = {0, 0, 0, 0};
+/*
+  0 - FL
+  1 - FR
+  2 - BL
+  3 - BR
+*/
+//Motor Pins
 uint8_t motor_pin[4] = {9, 12, 3, 6};
-uint8_t dir_pin[4] = {8,11,2,5};
-uint8_t brake_pin[4] = {10,13,4,7};
+uint8_t dir_pin[4] = {8, 11, 2, 5};
+uint8_t brake_pin[4] = {10, 13, 4, 7};
 /*
   Pin mappings to motors
-
   0 - front left motor
   1 - front right motor
   2 - rear left motor
   3 - rear right motor
 */
-
 char sel = 0;
 boolean flag = 0;
 void setup() {
-  //Declaring Motor pins as OUTPUTS
+  Serial.begin(115200); //For debugging on Serial Monitor
+  Serial.flush();
   init_motors();
-  Serial.begin(115200);
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  if (Serial.available() > 0)
+    Vsp[0] = 0.85;
+    Vsp[1] = 0;
+    Vsp[2] = 0;
+        matrix_mult();
+    motors(w);
+    delay(1000);
+        Vsp[0] = -0.85;
+    Vsp[1] = 0;
+    Vsp[2] = 0;
+        matrix_mult();
+    motors(w);
+    delay(1000);
+ /* for(int k = 0; k < 2; k++)
   {
-    sel = Serial.read();
-    flag = 0;
+  for (int i = 0; i < 20; i++)
+  {
+    Vsp[0] = i * 0.05 * pow(-1,k);
+    Vsp[1] = 0;
+    Vsp[2] = 0;
+    matrix_mult();
+    motors(w);
+    delay(100);
   }
-  switch (sel)
+  for (int i = 19; i >=0; i--)
   {
-    case '8':
+    Vsp[0] = i * 0.05 * pow(-1,k);
+    Vsp[1] = 0;
+    Vsp[2] = 0;
+    matrix_mult();
+    motors(w);
+    delay(100);
+  }
+  }
+  for(int k = 0; k < 2; k++)
+  {
+  for (int i = 0; i < 20; i++)
+  {
+    Vsp[0] = 0;
+    Vsp[1] = i * 0.05 * pow(-1,k);
+    Vsp[2] = 0;
+    matrix_mult();
+    motors(w);
+    delay(100);
+  }
+  for (int i = 19; i >=0; i--)
+  {
+    Vsp[0] = 0;
+    Vsp[1] = i * 0.05 * pow(-1,k);
+    Vsp[2] = 0;
+    matrix_mult();
+    motors(w);
+    delay(100);
+  }
+  }
+  
+  for(int k = 0; k < 2; k++)
+  {
+  for (int i = 0; i < 20; i++)
+  {
+    Vsp[0] = 0;
+    Vsp[1] = 0;
+    Vsp[2] = i * 0.05 * pow(-1,k);
+    matrix_mult();
+    motors(w);
+    delay(100);
+  }
+  for (int i = 19; i >=0; i--)
+  {
+    Vsp[0] = 0;
+    Vsp[1] = 0;
+    Vsp[2] = i * 0.05 * pow(-1,k);
+    matrix_mult();
+    motors(w);
+    delay(100);
+  }
+  }*/
+}
+
+void motors(float motor_speed[4])
+{
+  for (int i = 0; i < 4; i++)
+  {
+    set_motor(i, motor_speed[i]);
+  }
+}
+
+void matrix_mult()
+{
+  float sum = 0;
+  for (int i = 0; i < 4; i++)
+  {
+    sum  = 0;
+    for (int j = 0; j < 3; j++)
+    {
+      sum += (J[i][j] * Vsp[j]);
+    }
+    w[i] = sum;
+    w[i] = w[i] * 60 / (2 * pi); //rps to RpM
+    w[i] = w[i] * conv_factor; //RpM to Arduino PWM value*/
+    if (abs(w[i]) > 255)
+    {
+      if (w[i] > 0)
       {
-        forward();
-        if (flag == 0)
-        {
-          Serial.println("Forward");
-          flag = 1;
-        }
+        w[i] = 255;
       }
-      break;
-    case '2':
+      else
       {
-        backward();
-        if (flag == 0)
-        {
-          Serial.println("backward");
-          flag = 1;
-        }
+        w[i] = -255;
       }
-      break;
-    case '7':
-      {
-        forward_left();
-        if (flag == 0)
-        {
-          flag = 1;
-          Serial.println("Forward Left");
-        }
-      }
-      break;
-    case '9':
-      {
-        forward_right();
-        if (flag == 0)
-        {
-          flag = 1;
-          Serial.println("Forward Right");
-        }
-      }
-      break;
-    case '1':
-      {
-        backward_left();
-        if (flag == 0)
-        {
-          flag = 1;
-          Serial.println("Backward Left");
-        }
-      }
-      break;
-    case '3':
-      {
-        backward_right();
-        if (flag == 0)
-        {
-          flag = 1;
-          Serial.println("Backward Right");
-        }
-      }
-      break;
-    case '4':
-      {
-        slide_left();
-        if (flag == 0)
-        {
-          flag = 1;
-          Serial.println("Slide Left");
-        }
-      }
-      break;
-    case '6':
-      {
-        slide_right();
-        if (flag == 0)
-        {
-          flag = 1;
-          Serial.println("Slide Right");
-        }
-      }
-      break;
-    case 'a':
-      {
-        turn_left();
-        if (flag == 0)
-        {
-          flag = 1;
-          Serial.println("Turn Left");
-        }
-      }
-      break;
-    case 'd':
-      {
-        turn_right();
-        if (flag == 0)
-        {
-          flag = 1;
-          Serial.println("Turn Right");
-        }
-      }
-      break;
-    case 'e':
-      {
-        motors(100, -50);
-        if (flag == 0)
-        {
-          flag = 1;
-          Serial.println("curve right");
-        }
-      }
-      break;
-    case 'q':
-      {
-        motors(-50, 100);
-        if (flag == 0)
-        {
-          flag = 1;
-          Serial.println("Curve left");
-        }
-      }
-      break;
-    default:
-      motors(0, 0);
-      if (flag == 0)
-      {
-        flag = 1;
-        Serial.println("Stop");
-      }
+    }
+    //Serial.print(String(w[i]) + " ");
+  }
+  // Serial.println("");
+}
+
+
+
+void set_motor(uint8_t index, int motor_speed)
+{
+  if (index % 2 == 0)
+    motor_speed = -1 * motor_speed;
+  if (motor_speed > 0)
+  {
+    //clock wise direction
+    digitalWrite(brake_pin[index], LOW);
+    digitalWrite(dir_pin[index], LOW);
+    analogWrite(motor_pin[index], motor_speed);
+  }
+  else if (motor_speed < 0)
+  {
+    //anti clock wise direction
+    digitalWrite(brake_pin[index], LOW);
+    digitalWrite(dir_pin[index], HIGH);
+    analogWrite(motor_pin[index], -1 * motor_speed);
+  }
+  else
+  {
+    //brake condition
+    digitalWrite(brake_pin[index], HIGH);
   }
 }
 
@@ -170,164 +195,3 @@ void init_motors()
     digitalWrite(brake_pin[i], LOW);
   }
 }
-
-void forward()
-{
-  //all motors in clockwise direction
-  for (int i = 0; i < 4; i++)
-  {
-    set_motor(i, max_speed);
-  }
-}
-
-void backward()
-{
-  //all motors in anti clockwise direction
-  for (int i = 0; i < 4; i++)
-  {
-    set_motor(i, -1 * max_speed);
-  }
-}
-
-void slide_left()
-{
-  /*
-    front left motor clock wise - 0
-    front right motor anti clock wise - 1
-    rear left motor anti clock wise - 2
-    rear right motor clock wise - 3
-  */
-  set_motor(0, max_speed);
-  set_motor(1, -1 * max_speed);
-  set_motor(2, -1 * max_speed);
-  set_motor(3, max_speed);
-}
-
-void slide_right()
-{
-  /*
-    front left motor anti clock wise - 0
-    front right motor clock wise - 1
-    rear left motor clock wise - 2
-    rear right motor anti clock wise - 3
-  */
-  set_motor(0, -1 * max_speed);
-  set_motor(1, max_speed);
-  set_motor(2, max_speed);
-  set_motor(3, -1 * max_speed);
-}
-
-void turn_left()
-{
-  /*
-    front left motor anti clock wise - 0
-    front right motor clock wise - 1
-    rear left motor anti clock wise - 2
-    rear right motor clock wise - 3
-  */
-  set_motor(0, -1 * max_speed);
-  set_motor(1, max_speed);
-  set_motor(2, -1 * max_speed);
-  set_motor(3, max_speed);
-}
-
-void turn_right()
-{
-  /*
-    front left motor clock wise - 0
-    front right motor anti clock wise - 1
-    rear left motor clock wise - 2
-    rear right motor anti clock wise - 3
-  */
-  set_motor(0, max_speed);
-  set_motor(1, -1 * max_speed);
-  set_motor(2, max_speed);
-  set_motor(3, -1 * max_speed);
-}
-
-void forward_left()
-{
-  /*
-    front left motor clock wise - 0
-    front right motor stop - 1
-    rear left motor stop - 2
-    rear right motor clock wise - 3
-  */
-  set_motor(0, max_speed);
-  set_motor(1, 0);
-  set_motor(2, 0);
-  set_motor(3, max_speed);
-}
-
-void backward_right()
-{
-  /*
-    front left motor anti clock wise - 0
-    front right motor stop - 1
-    rear left motor stop - 2
-    rear right motor anti clock wise - 3
-  */
-  set_motor(0, -1 * max_speed);
-  set_motor(1, 0);
-  set_motor(2, 0);
-  set_motor(3, -1 * max_speed);
-}
-
-void forward_right()
-{
-  /*
-    front left motor stop - 0
-    front right motor clock wise - 1
-    rear left motor clock wise - 2
-    rear right motor stop - 3
-  */
-  set_motor(0, 0);
-  set_motor(1, max_speed);
-  set_motor(2, max_speed);
-  set_motor(3, 0);
-}
-
-void backward_left()
-{
-  /*
-    front left motor stop - 0
-    front right motor anti clock wise - 1
-    rear left motor anti clock wise - 2
-    rear right motor stop - 3
-  */
-  set_motor(0, 0);
-  set_motor(1, -1 * max_speed);
-  set_motor(2, -1 * max_speed);
-  set_motor(3, 0);
-}
-
-void motors(int left_speed, int right_speed)
-{
-  //curved trajectory
-  set_motor(0, left_speed);
-  set_motor(2, left_speed);
-  set_motor(1, right_speed);
-  set_motor(3, right_speed);
-}
-
-void set_motor(uint8_t index, int motor_speed)
-{
-  if (motor_speed > 0)
-  {
-    //clock wise direction
-    digitalWrite(dir_pin[index], LOW);
-    analogWrite(motor_pin[index], motor_speed);
-  }
-  else if (motor_speed < 0)
-  {
-    //anti clock wise direction
-    digitalWrite(dir_pin[index], HIGH);
-    analogWrite(motor_pin[index], -1 * motor_speed);
-  }
-  else
-  {
-    //brake condition
-    digitalWrite(brake_pin[index], HIGH);
-  }
-}
-
