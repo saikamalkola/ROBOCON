@@ -14,7 +14,7 @@
 
 char address = 0x00;
 uint8_t ser_enable[4] = {46, 38, 30, 22};
-//uint8_t Jpulse[4] = {48, 40, 32, 24};
+uint8_t Jpulse[4] = {48, 40, 32, 24};
 //Sensor Data
 int sensor_data[4] = {0, 0, 0, 0};
 /*
@@ -57,7 +57,7 @@ void loop() {
 
 void read_sensors()
 {
-  for (int i = 0; i < 2; i++)
+  for (int i = 0; i < 4; i++)
   {
     digitalWrite(ser_enable[i], LOW);  // Set Serial3EN to LOW to request UART data
     while (Serial3.available() <= 0);  // Wait for data to be available
