@@ -1,4 +1,4 @@
-#define max_speed 1
+#define max_speed 0.5
 #define DELAY 50
 
 float J[4][3] = {{13.1579, -13.1579, -8.4211}, {13.1579, 13.1579, 8.4211}, {13.1579, 13.1579, -8.4211}, {13.1579, -13.1579, 8.4211}};
@@ -10,7 +10,7 @@ float J[4][3] = {{13.1579, -13.1579, -8.4211}, {13.1579, 13.1579, 8.4211}, {13.1
   13.1579 -13.1579  8.4211
 */
 float Vsp[3] = {0.5, 0, 0};
-float base_speed = 0.5; //in m/s
+float base_speed = 0.4; //in m/s
 //Vmax = 3.725
 //Vx,Vy,W
 float max_div = 255.0, max_rpm = 468.0;
@@ -54,7 +54,7 @@ char line_mode = 0x00; //Light on Dark Background
 char UART_Mode = 0x02; //byte of analog Value
 
 //PID Variables
-float Kp[2] = {0.05, 0.05}, Kd[2] = {0, 0}, Ki[2] = {0, 0};
+float Kp[2] = {0.005, 0.005}, Kd[2] = {0, 0}, Ki[2] = {0, 0};
 float P[2] = {0, 0}, I[2] = {0, 0}, D[2] = {0, 0};
 float PID[2] = {0, 0};
 float error[2] = {0, 0};
@@ -95,9 +95,9 @@ void set_Vsp()
 void cal_error()
 {
   float temp = 0;
-  temp = (sensor_data[0] - set_position) + (sensor_data[1] - set_position);
-  error[0] = temp / 2;
   temp = (sensor_data[0] - set_position) - (sensor_data[1] - set_position);
+  error[0] = temp / 2;
+  temp = (sensor_data[0] - set_position) + (sensor_data[1] - set_position);
   error[1] = temp;
   Serial.print("linear Error: " + String(error[0]) + " ");
   Serial.println("Angular Error: " + String(error[1]));
@@ -207,8 +207,8 @@ void set_sensor_settings()
   // Setting junction width
   send_command('J', junction_width);
   delay(DELAY);
-  send_command('T', threshold);
-  delay(DELAY);
+  //send_command('T', threshold);
+  //delay(DELAY);
   // Setting line mode
   send_command('L', line_mode);
   delay(DELAY);
