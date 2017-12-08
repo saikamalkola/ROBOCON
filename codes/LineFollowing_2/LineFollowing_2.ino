@@ -1,4 +1,5 @@
-#define max_speed 0.5
+#define max_speed 0.8
+float base_speed =  1;
 #define DELAY 50
 
 float J[4][3] = {{13.1579, -13.1579, -8.4211}, {13.1579, 13.1579, 8.4211}, {13.1579, 13.1579, -8.4211}, {13.1579, -13.1579, 8.4211}};
@@ -16,14 +17,13 @@ float max_div = 255.0, max_rpm = 468.0;
 float conv_factor = max_div / max_rpm;
 float pi = 3.1416;
 float w[4] = {0, 0, 0, 0};
-int temp = 0;
 /*
   0 - FL
   1 - FR
   2 - BL
   3 - BR
 */
-
+long present_ms = 0;
 //Sensor Pins
 uint8_t ser_enable[4] = {46, 38, 30, 22};   //F B L R
 uint8_t Jpulse[4] = {48, 40, 32, 24};       //F B L R
@@ -53,8 +53,12 @@ char threshold = 0x04; //0 to 7
 char line_mode = 0x00; //Light on Dark Background
 char UART_Mode = 0x02; //byte of analog Value
 
+/*
+  Left Line Following
+  Kp and Kd 0.045
+*/
 //PID Variables
-float Kp[2] = {0.02, 0.02}, Kd[2] = {0, 0}, Ki[2] = {0, 0};
+float Kp[2] = {0.045, 0.045}, Kd[2] = {0.045, 0.045}, Ki[2] = {0, 0};
 float P[2] = {0, 0}, I[2] = {0, 0}, D[2] = {0, 0};
 float PID[2] = {0, 0};
 float error[2] = {0, 0};
@@ -84,13 +88,18 @@ void loop() {
   set_Vsp();
   matrix_mult();
   motors(w);
+  if(Jpulse[1] == 1)
+  base_speed = 1;
+  for (int i = 0; i < 4; i++)
+    Serial.print(String(w[i]) + " ");
+  Serial.println("");
 }
 
 void set_Vsp()
 {
-  Vsp[0] = 0;
+  Vsp[0] = base_speed;
   Vsp[1] = -1 * PID[0];
-  Vsp[2] = PID[1];
+  Vsp[2] = -1 * PID[1];
 
 }
 
@@ -101,8 +110,8 @@ void cal_error()
   error[0] = temp / 2;
   temp = (sensor_data[0] - set_position) + (sensor_data[1] - set_position);
   error[1] = temp / 2;
-      Serial.print("linear Error: " + String(error[0]) + " ");
-  Serial.println("Angular Error: " + String(error[1]));
+  Serial.print("linear Error: " + String(error[0]) + " ");
+  Serial.print("Angular Error: " + String(error[1]) + " ");
 }
 
 void cal_PID()
@@ -162,29 +171,20 @@ void matrix_mult()
 
 void read_sensors()
 {
+  int temp = 0;
   for (int i = 0; i < 4; i++)
   {
     digitalWrite(ser_enable[i], LOW);  // Set Serial3EN to LOW to request UART data
     while (Serial3.available() <= 0);  // Wait for data to be available
-    if(temp <= 70)
-    sensor_data[i] = temp;
+    temp = Serial3.read();
+    if (temp <= 70)
+      sensor_data[i] = temp;
     digitalWrite(ser_enable[i], HIGH);   // Stop requesting for UART data
   }
-//  for (int i = 0; i < 4; i++)
-//  {
-//    jun_data[i] = digitalRead(Jpulse[i]);
-//  }
-//  Serial.print("Sensor Data : ");
-//  for (int i = 0; i < 4; i++)
-//  {
-//    Serial.print(String(sensor_data[i]) + " ");
-//  }
-//  Serial.print("Junction Data : ");
-//  for (int i = 0; i < 4; i++)
-//  {
-//    Serial.print(String(jun_data[i]) + " ");
-//  }
-//  Serial.println("");
+  for (int i = 0; i < 4; i++)  {
+    jun_data[i] = digitalRead(Jpulse[i]);
+  }
+
 }
 
 void calibrate()
@@ -252,7 +252,9 @@ void set_motor(uint8_t index, int motor_speed)
 {
   if (index % 2 == 0)
     motor_speed = -1 * motor_speed;
-  if (motor_speed >=0)
+  if (abs(motor_speed) < 5)
+    motor_speed = 0;
+  if (motor_speed >= 0)
   {
     //clock wise direction
     digitalWrite(brake_pin[index], LOW);
