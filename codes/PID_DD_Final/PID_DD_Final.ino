@@ -1,4 +1,4 @@
-#define max_speed 0.5
+#define max_speed 50
 #define DELAY 50
 
 //Sensor Pins
@@ -116,30 +116,24 @@ void motors()
 
 void read_sensors()
 {
+  int temp = 0;
   for (int i = 0; i < 4; i++)
   {
     digitalWrite(ser_enable[i], LOW);  // Set Serial3EN to LOW to request UART data
     while (Serial3.available() <= 0);  // Wait for data to be available
-    sensor_data[i] = Serial3.read();    // Read incoming data and store in variable positionVal
+    temp = Serial3.read();
+    if (temp > 70)
+      sensor_data[i] = sensor_data[i];    // Read incoming data and store in variable positionVal
+    else
+      sensor_data[i] = temp;
     digitalWrite(ser_enable[i], HIGH);   // Stop requesting for UART data
   }
-
-  for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 4; i++)
   {
     jun_data[i] = digitalRead(Jpulse[i]);
   }
-  // Serial.print("Sensor Data : ");
-  for (int i = 0; i < 4; i++)
-  {
-    //  Serial.print(String(sensor_data[i]) + " ");
-  }
-  //Serial.print("Junction Data : ");
-  for (int i = 0; i < 4; i++)
-  {
-    //  Serial.print(String(jun_data[i]) + " ");
-  }
-  //Serial.println("");
 }
+
 
 void calibrate()
 {
