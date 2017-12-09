@@ -1,8 +1,17 @@
 #define max_speed 0.8
-#define follow_speed 0.5
+#define follow_speed 0.8
 #define DELAY 50
 
-float base_speed =  0.5;
+int dir = 1;
+/*
+  0   - Stop
+  1   - Front
+  -1  - Back
+  2   - Left
+  -2  - Right
+*/
+
+float base_speed =  follow_speed;
 float J[4][3] = {{13.1579, -13.1579, -8.4211}, {13.1579, 13.1579, 8.4211}, {13.1579, 13.1579, -8.4211}, {13.1579, -13.1579, 8.4211}};
 /*
   Conversion Matrix
@@ -73,15 +82,6 @@ float set_position = 35;
   1     -     Angular Velocity PID
 */
 
-int dir = 1;
-/*
-  0   - Stop
-  1   - Front
-  -1  - Back
-  2   - Left
-  -2  - Right
-*/
-
 void setup()
 {
   // put your setup code here, to run once:
@@ -89,7 +89,7 @@ void setup()
   Serial.flush();
   init_motors();
   init_sensors();
-  //calibrate();
+  calibrate();
 }
 
 void loop() {
@@ -144,14 +144,14 @@ void set_Vsp()
       Vsp[1] = 0;
       Vsp[2] = 0;
   }
-    if (dir == 0)
+  if (dir == 0)
   {
     base_speed = 0;
     Vsp[0] = PID[1];
     Vsp[1] = -1 * PID[0];
     Vsp[2] = -1 * PID[2];
   }
-  else{
+  else {
     base_speed = follow_speed;
   }
 }
@@ -163,8 +163,16 @@ void cal_error()
   error[0] = temp / 2;
   temp = (sensor_data[2] - set_position) - (sensor_data[3] - set_position);
   error[1] = temp / 2;
-  temp = (sensor_data[0] - set_position) + (sensor_data[1] - set_position);
-  error[2] = temp / 2;
+  if (abs(dir) == 1 || abs(dir) == 0)
+  {
+    temp = (sensor_data[0] - set_position) + (sensor_data[1] - set_position);
+    error[2] = temp / 2;
+  }
+  if (abs(dir) == 2)
+  {
+    temp = (sensor_data[2] - set_position) + (sensor_data[3] - set_position);
+    error[2] = temp / 2;
+  }
   Serial.print("linear X Error: " + String(error[0]) + " ");
   Serial.print("linear Y Error: " + String(error[1]) + " ");
   Serial.print("Angular Error: " + String(error[2]) + " ");
