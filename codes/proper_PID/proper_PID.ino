@@ -1,6 +1,8 @@
-#define max_speed 0.5
+#define max_speed 0.8
+#define follow_speed 0.5
 #define DELAY 50
 
+float base_speed =  0.5;
 float J[4][3] = {{13.1579, -13.1579, -8.4211}, {13.1579, 13.1579, 8.4211}, {13.1579, 13.1579, -8.4211}, {13.1579, -13.1579, 8.4211}};
 /*
   Conversion Matrix
@@ -9,8 +11,7 @@ float J[4][3] = {{13.1579, -13.1579, -8.4211}, {13.1579, 13.1579, 8.4211}, {13.1
   13.1579  13.1579 -8.4211
   13.1579 -13.1579  8.4211
 */
-float Vsp[3] = {0.5, 0, 0};
-float base_speed = 0.4; //in m/s
+float Vsp[3] = {0, 0, -0.5};
 //Vmax = 3.725
 //Vx,Vy,W
 float max_div = 255.0, max_rpm = 468.0;
@@ -23,7 +24,7 @@ float w[4] = {0, 0, 0, 0};
   2 - BL
   3 - BR
 */
-
+long present_ms = 0;
 //Sensor Pins
 uint8_t ser_enable[4] = {46, 38, 30, 22};   //F B L R
 uint8_t Jpulse[4] = {48, 40, 32, 24};       //F B L R
@@ -53,19 +54,32 @@ char threshold = 0x04; //0 to 7
 char line_mode = 0x00; //Light on Dark Background
 char UART_Mode = 0x02; //byte of analog Value
 
+/*
+  Left Line Following
+  Kp and Kd 0.045
+*/
 //PID Variables
-float Kp[2] = {0.005, 0.005}, Kd[2] = {0, 0}, Ki[2] = {0, 0};
-float P[2] = {0, 0}, I[2] = {0, 0}, D[2] = {0, 0};
-float PID[2] = {0, 0};
-float error[2] = {0, 0};
-float last_error[2] = {0, 0};
+//PID Variables
+float Kp[3] = {0.045, 0.045 , 0.045}, Kd[3] = {0.045, 0.045, 0.045}, Ki[3] = {0, 0};
+float P[3] = {0, 0}, I[3] = {0, 0}, D[3] = {0, 0};
+float PID[3] = {0, 0};
+float error[3] = {0, 0};
+float last_error[3] = {0, 0};
 float set_position = 35;
-float temp = 0;
 
 /*
   Index
   0     -     Linear Velocity PID
   1     -     Angular Velocity PID
+*/
+
+int dir = 1;
+/*
+  0   - Stop
+  1   - Front
+  -1  - Back
+  2   - Left
+  -2  - Right
 */
 
 void setup()
@@ -75,38 +89,90 @@ void setup()
   Serial.flush();
   init_motors();
   init_sensors();
-  calibrate();
+  //calibrate();
 }
 
 void loop() {
+  if (Serial.available() > 0)
+    dir = Serial.parseInt();
   read_sensors();
   cal_error();
   cal_PID();
   set_Vsp();
   matrix_mult();
   motors(w);
+  for (int i = 0; i < 4; i++)
+    Serial.print(String(w[i]) + " ");
+  Serial.println("");
 }
 
 void set_Vsp()
 {
-  Vsp[0] = base_speed;
-  Vsp[1] = PID[0];
-  Vsp[2] = PID[1];
+
+  switch (abs(dir))
+  {
+    case 1:
+      if (dir > 0)
+      {
+        Vsp[0] = base_speed;
+        Vsp[1] = -1 * PID[0];
+        Vsp[2] = -1 * PID[2];
+      }
+      else
+      {
+        Vsp[0] = -1 * base_speed;
+        Vsp[1] = -1 * PID[0];
+        Vsp[2] = -1 * PID[2];
+      }
+      break;
+    case 2:
+      if (dir > 0)
+      {
+        Vsp[0] = PID[1];
+        Vsp[1] =  base_speed;
+        Vsp[2] = -1 * PID[2];
+      }
+      else
+      {
+        Vsp[0] = PID[1];
+        Vsp[1] = -1 * base_speed;
+        Vsp[2] = -1 * PID[2];
+      }
+      break;
+    default:
+      Vsp[0] = 0;
+      Vsp[1] = 0;
+      Vsp[2] = 0;
+  }
+    if (dir == 0)
+  {
+    base_speed = 0;
+    Vsp[0] = PID[1];
+    Vsp[1] = -1 * PID[0];
+    Vsp[2] = -1 * PID[2];
+  }
+  else{
+    base_speed = follow_speed;
+  }
 }
+
 void cal_error()
 {
   float temp = 0;
   temp = (sensor_data[0] - set_position) - (sensor_data[1] - set_position);
   error[0] = temp / 2;
-  temp = (sensor_data[0] - set_position) + (sensor_data[1] - set_position);
+  temp = (sensor_data[2] - set_position) - (sensor_data[3] - set_position);
   error[1] = temp / 2;
-  Serial.print("linear Error: " + String(error[0]) + " ");
-  Serial.println("Angular Error: " + String(error[1]));
+  temp = (sensor_data[0] - set_position) + (sensor_data[1] - set_position);
+  error[2] = temp / 2;
+  Serial.print("linear X Error: " + String(error[0]) + " ");
+  Serial.print("linear Y Error: " + String(error[1]) + " ");
+  Serial.print("Angular Error: " + String(error[2]) + " ");
 }
 
 void cal_PID()
 {
-  for (int i = 0; i < 2; i++)
+  for (int i = 0; i < 3; i++)
   {
     P[i] = error[i];
     I[i] = I[i] + error[i];
@@ -114,13 +180,14 @@ void cal_PID()
 
     PID[i] = (Kp[i] * P[i]) + (Kd[i] * D[i]) + (Ki[i] * I[i]);
     last_error[i] = error[i];
-    if(PID[i] > max_speed)
+    if (PID[i] > max_speed)
       PID[i] = max_speed;
     Serial.print(String(PID[i]) + " ");
   }
   Serial.println("");
-  
+
 }
+
 void motors(float motor_speed[4])
 {
   for (int i = 0; i < 4; i++)
@@ -160,31 +227,20 @@ void matrix_mult()
 
 void read_sensors()
 {
+  int temp = 0;
   for (int i = 0; i < 4; i++)
   {
     digitalWrite(ser_enable[i], LOW);  // Set Serial3EN to LOW to request UART data
     while (Serial3.available() <= 0);  // Wait for data to be available
-    temp = Serial3.read();    // Read incoming data and store in variable positionVal
-    if(temp <= 70)
-    sensor_data[i] = temp;
+    temp = Serial3.read();
+    if (temp <= 70)
+      sensor_data[i] = temp;
     digitalWrite(ser_enable[i], HIGH);   // Stop requesting for UART data
   }
-
-  for (int i = 0; i < 4; i++)
-  {
+  for (int i = 0; i < 4; i++)  {
     jun_data[i] = digitalRead(Jpulse[i]);
   }
-  // Serial.print("Sensor Data : ");
-  for (int i = 0; i < 4; i++)
-  {
-    //  Serial.print(String(sensor_data[i]) + " ");
-  }
-  //Serial.print("Junction Data : ");
-  for (int i = 0; i < 4; i++)
-  {
-    //  Serial.print(String(jun_data[i]) + " ");
-  }
-  //Serial.println("");
+
 }
 
 void calibrate()
@@ -210,8 +266,8 @@ void set_sensor_settings()
   // Setting junction width
   send_command('J', junction_width);
   delay(DELAY);
-  //send_command('T', threshold);
-  //delay(DELAY);
+  send_command('T', threshold);
+  delay(DELAY);
   // Setting line mode
   send_command('L', line_mode);
   delay(DELAY);
@@ -252,6 +308,8 @@ void set_motor(uint8_t index, int motor_speed)
 {
   if (index % 2 == 0)
     motor_speed = -1 * motor_speed;
+  if (abs(motor_speed) < 5)
+    motor_speed = 0;
   if (motor_speed >= 0)
   {
     //clock wise direction
@@ -259,13 +317,14 @@ void set_motor(uint8_t index, int motor_speed)
     digitalWrite(dir_pin[index], LOW);
     analogWrite(motor_pin[index], motor_speed);
   }
-  else
+  else if (motor_speed < 0)
   {
     //anti clock wise direction
     digitalWrite(brake_pin[index], LOW);
     digitalWrite(dir_pin[index], HIGH);
     analogWrite(motor_pin[index], -1 * motor_speed);
   }
+
 }
 
 void init_motors()

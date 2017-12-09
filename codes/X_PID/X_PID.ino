@@ -1,5 +1,5 @@
-#define max_speed 0.8
-float base_speed =  1;
+#define max_speed 0.6
+float base_speed =  0;
 #define DELAY 50
 
 float J[4][3] = {{13.1579, -13.1579, -8.4211}, {13.1579, 13.1579, 8.4211}, {13.1579, 13.1579, -8.4211}, {13.1579, -13.1579, 8.4211}};
@@ -58,11 +58,11 @@ char UART_Mode = 0x02; //byte of analog Value
   Kp and Kd 0.045
 */
 //PID Variables
-float Kp[2] = {0.045, 0.045}, Kd[2] = {0.045, 0.045}, Ki[2] = {0, 0};
-float P[2] = {0, 0}, I[2] = {0, 0}, D[2] = {0, 0};
-float PID[2] = {0, 0};
-float error[2] = {0, 0};
-float last_error[2] = {0, 0};
+float Kp[3] = {0.045, 0.045 , 0.045}, Kd[3] = {0.045, 0.045, 0.045}, Ki[3] = {0, 0};
+float P[3] = {0, 0}, I[3] = {0, 0}, D[3] = {0, 0};
+float PID[3] = {0, 0};
+float error[3] = {0, 0};
+float last_error[3] = {0, 0};
 float set_position = 35;
 
 /*
@@ -88,8 +88,8 @@ void loop() {
   set_Vsp();
   matrix_mult();
   motors(w);
-  if(Jpulse[1] == 1)
-  base_speed = 1;
+  if (jun_data[0] == 1)
+    base_speed = 0;
   for (int i = 0; i < 4; i++)
     Serial.print(String(w[i]) + " ");
   Serial.println("");
@@ -97,9 +97,12 @@ void loop() {
 
 void set_Vsp()
 {
-  Vsp[0] = base_speed;
+  Vsp[0] = PID[1];
   Vsp[1] = -1 * PID[0];
-  Vsp[2] = -1 * PID[1];
+  Vsp[2] = -1 * PID[2];
+   Serial.print("linear Error: " + String(PID[0]) + " ");
+  Serial.print("Linear Error: " + String(PID[1]) + " ");
+  Serial.print("Angular Error: " + String(PID[2]) + " ");
 
 }
 
@@ -108,15 +111,16 @@ void cal_error()
   float temp = 0;
   temp = (sensor_data[0] - set_position) - (sensor_data[1] - set_position);
   error[0] = temp / 2;
-  temp = (sensor_data[0] - set_position) + (sensor_data[1] - set_position);
+  temp = (sensor_data[2] - set_position) - (sensor_data[3] - set_position);
   error[1] = temp / 2;
-  Serial.print("linear Error: " + String(error[0]) + " ");
-  Serial.print("Angular Error: " + String(error[1]) + " ");
+  temp = (sensor_data[0] - set_position) + (sensor_data[1] - set_position);
+  error[2] = temp / 2;
+ 
 }
 
 void cal_PID()
 {
-  for (int i = 0; i < 2; i++)
+  for (int i = 0; i < 3; i++)
   {
     P[i] = error[i];
     I[i] = I[i] + error[i];
