@@ -1,0 +1,215 @@
+Telemetry Viewer File Format v0.4
+
+Grid Settings:
+
+	column count = 20
+	row count = 20
+
+Serial Port Settings:
+
+	port = COM11
+	baud = 115200
+	packet type = ASCII CSVs
+	sample rate = 1000
+
+12 Data Structure Locations:
+
+	location = 0
+	processor index = -1
+	name = linepid_vy
+	color = 0x000000
+	unit = 
+	conversion factor a = 1.0
+	conversion factor b = 1.0
+
+	location = 1
+	processor index = -1
+	name = linepid_w
+	color = 0x000000
+	unit = 
+	conversion factor a = 1.0
+	conversion factor b = 1.0
+
+	location = 2
+	processor index = -1
+	name = fl_pid
+	color = 0x000000
+	unit = 
+	conversion factor a = 1.0
+	conversion factor b = 1.0
+
+	location = 3
+	processor index = -1
+	name = fr_pid
+	color = 0x000000
+	unit = 
+	conversion factor a = 1.0
+	conversion factor b = 1.0
+
+	location = 4
+	processor index = -1
+	name = bl_pid
+	color = 0x000000
+	unit = 
+	conversion factor a = 1.0
+	conversion factor b = 1.0
+
+	location = 5
+	processor index = -1
+	name = br_pid
+	color = 0x000000
+	unit = 
+	conversion factor a = 1.0
+	conversion factor b = 1.0
+
+	location = 6
+	processor index = -1
+	name = vy_sp
+	color = 0x339900
+	unit = 
+	conversion factor a = 1.0
+	conversion factor b = 1.0
+
+	location = 7
+	processor index = -1
+	name = w_sp
+	color = 0x339900
+	unit = 
+	conversion factor a = 1.0
+	conversion factor b = 1.0
+
+	location = 8
+	processor index = -1
+	name = fl_sp
+	color = 0x339900
+	unit = 
+	conversion factor a = 1.0
+	conversion factor b = 1.0
+
+	location = 9
+	processor index = -1
+	name = fr_sp
+	color = 0x339900
+	unit = 
+	conversion factor a = 1.0
+	conversion factor b = 1.0
+
+	location = 10
+	processor index = -1
+	name = bl_sp
+	color = 0x339900
+	unit = 
+	conversion factor a = 1.0
+	conversion factor b = 1.0
+
+	location = 11
+	processor index = -1
+	name = br_sp
+	color = 0x339900
+	unit = 
+	conversion factor a = 1.0
+	conversion factor b = 1.0
+
+6 Charts:
+
+	chart type = Time Domain Chart
+	top left x = 0
+	top left y = 0
+	bottom right x = 9
+	bottom right y = 6
+	datasets = 0,6
+	sample count = 1000
+	autoscale y-axis minimum = true
+	manual y-axis minimum = -1.0
+	autoscale y-axis maximum = true
+	manual y-axis maximum = 1.0
+	show x-axis title = true
+	show x-axis scale = true
+	show y-axis title = true
+	show y-axis scale = true
+	show legend = true
+
+	chart type = Time Domain Chart
+	top left x = 10
+	top left y = 0
+	bottom right x = 19
+	bottom right y = 6
+	datasets = 1,7
+	sample count = 1000
+	autoscale y-axis minimum = true
+	manual y-axis minimum = -1.0
+	autoscale y-axis maximum = true
+	manual y-axis maximum = 1.0
+	show x-axis title = true
+	show x-axis scale = true
+	show y-axis title = true
+	show y-axis scale = true
+	show legend = true
+
+	chart type = Time Domain Chart
+	top left x = 0
+	top left y = 7
+	bottom right x = 9
+	bottom right y = 12
+	datasets = 2,8
+	sample count = 1000
+	autoscale y-axis minimum = true
+	manual y-axis minimum = -1.0
+	autoscale y-axis maximum = true
+	manual y-axis maximum = 1.0
+	show x-axis title = true
+	show x-axis scale = true
+	show y-axis title = true
+	show y-axis scale = true
+	show legend = true
+
+	chart type = Time Domain Chart
+	top left x = 10
+	top left y = 7
+	bottom right x = 19
+	bottom right y = 12
+	datasets = 3
+	sample count = 1000
+	autoscale y-axis minimum = true
+	manual y-axis minimum = -1.0
+	autoscale y-axis maximum = true
+	manual y-axis maximum = 1.0
+	show x-axis title = true
+	show x-axis scale = true
+	show y-axis title = true
+	show y-axis scale = true
+	show legend = true
+
+	chart type = Time Domain Chart
+	top left x = 0
+	top left y = 13
+	bottom right x = 9
+	bottom right y = 18
+	datasets = 4,10
+	sample count = 1000
+	autoscale y-axis minimum = true
+	manual y-axis minimum = -1.0
+	autoscale y-axis maximum = true
+	manual y-axis maximum = 1.0
+	show x-axis title = true
+	show x-axis scale = true
+	show y-axis title = true
+	show y-axis scale = true
+	show legend = true
+
+	chart type = Time Domain Chart
+	top left x = 10
+	top left y = 13
+	bottom right x = 19
+	bottom right y = 18
+	datasets = 5
+	sample count = 1000
+	autoscale y-axis minimum = true
+	manual y-axis minimum = -1.0
+	autoscale y-axis maximum = true
+	manual y-axis maximum = 1.0
+	show x-axis title = true
+	show x-axis scale = true
+	show y-axis title = true
+	show y-axis scale = true
+	show legend = true
