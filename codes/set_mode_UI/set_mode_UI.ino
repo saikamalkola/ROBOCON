@@ -88,8 +88,8 @@ float set_position = 35;
 //Wheel PID Variables
 
 float max_vel = 400;
-float wheel_Kp[4] = {0, 3, 0,0} , wheel_Kd[4] = {0, 60, 0, 0};
-float wheel_Ki[4] = {0,0.06,0,0};
+float wheel_Kp[4] = {12,12,12,12}, wheel_Kd[4] = {150,150,150,150};
+float wheel_Ki[4] = {0.1,0.1,0.1,0.1};
 float wheel_P[4] = {0, 0, 0, 0}, wheel_I[4] = {0, 0, 0, 0}, wheel_D[4] = {0, 0, 0, 0};
 
 //Anti WindUp
@@ -99,7 +99,7 @@ float int_thresh = 30;
 float wheel_error[4] = {0, 0, 0, 0};
 float wheel_last_error[4] = {0, 0, 0, 0};
 
-float wheel_set_point[4] = {0, 100, 0, 0};
+float wheel_set_point[4] = {100,-100,-100,100};
 float wheel_correction[4] = {0, 0, 0, 0};
 
 
@@ -111,7 +111,7 @@ float counter[4] = {0};
 int present_state[4];
 int prev_state[4];
 
-unsigned long int present_ms = 0, previous_ms = 0, delta_t = 0;
+unsigned long int present_ms = 0, previous_ms = 0,last_ms = 0, delta_t = 0;
 
 int N = 50;
 
@@ -137,9 +137,27 @@ void setup()
   init_encoders();
   init_buff();
   //calibrate();
+  last_ms = millis();
 }
-
+boolean ramp = 0;
 void loop() {
+  if(millis() - last_ms> 3000 && ramp == 0)
+  {
+    last_ms = millis();
+    ramp = 1;
+  }
+  if(ramp == 1 && (millis() - last_ms) > 100)
+  {
+    last_ms = millis();
+    for(int  i = 0 ; i < 4; i++)
+    {
+      wheel_set_point[i] -= 10;
+      if(wheel_set_point[i] < 0)
+      {
+        wheel_set_point[i] = 0;
+      }
+    }
+  }
   dir = 0;
   //  read_sensors();
   //  cal_error();
@@ -150,6 +168,7 @@ void loop() {
   wheel_Kd[1] = Serial.parseFloat();
   cal_wheel_error();
   cal_wheel_PID();
+  
   motors(w);
   telemetry();
 }
