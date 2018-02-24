@@ -1,5 +1,5 @@
-const byte Serial3En1 = 46;    // Connect UART output enable of LSA08 to pin 2
-const byte Serial3En2 = 38;    // Connect UART output enable of LSA08 to pin 2
+const byte Serial3En1 = 38;    // Connect UART output enable of LSA08 to pin 2
+const byte Serial3En2 = 46;    // Connect UART output enable of LSA08 to pin 2
 
 
 void setup() {

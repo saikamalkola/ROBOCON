@@ -1,5 +1,5 @@
 void init_buff() {
-  for (int i = 0; i < 4; i++)
+  for (int i = 0; i < 3; i++)
   {
     for (int j = 0; j < N; j++)
     {
@@ -19,7 +19,7 @@ void init_buff() {
 
 void cal_avg() {
   // subtract the last reading:
-  for (int i = 0; i < 4; i++)
+  for (int i = 0; i < 3; i++)
   {
     summation[i] = summation[i] - readings[i][readIndex[i]];
     w_summation[i] = w_summation[i] - w_readings[i][w_readIndex[i]];
@@ -48,7 +48,7 @@ void cal_avg() {
 
 void cal_ardW_avg() {
   // subtract the last reading:
-  for (int i = 0; i < 4; i++)
+  for (int i = 0; i < 3; i++)
   {
     ardW_summation[i] = ardW_summation[i] - ardW_readings[i][ardW_readIndex[i]];
     ardW_readings[i][ardW_readIndex[i]] = w[i];

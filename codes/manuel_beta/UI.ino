@@ -37,8 +37,8 @@
 
 void telemetry() {
   float vx_pid = PID[0];
-  float vy_pid = PID[1];
-  float w_pid = PID[2];
+  float vy_pid = base_speed;
+  float w_pid = PID[1];
   float vx_sp = 0;
   float vy_sp = 0;
   float w_sp = 0;
@@ -48,29 +48,14 @@ void telemetry() {
     case 1:
       if (dir > 0)
       {
-        vx_sp = base_speed;
-        vy_sp = 0;
-        w_sp = 0;
-      }
-      else
-      {
-        vx_sp = -1 * base_speed;
-        vy_sp = 0;
-        w_sp = 0;
-      }
-      break;
-    case 2:
-      if (dir > 0)
-      {
         vx_sp = 0;
         vy_sp = base_speed;
         w_sp = 0;
       }
       else
       {
-        
         vx_sp = 0;
-        vy_sp = -1*base_speed;
+        vy_sp = -1 * base_speed;
         w_sp = 0;
       }
       break;

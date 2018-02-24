@@ -1,13 +1,4 @@
-#include "PinChangeInterrupt.h"
-
-int outputA[4] = {A9, A11, A13, A14};
-int outputB[4] = {A8, A10, A12, A15};
-int velocity[4] = {0};
-float counter[4] = {0};
-int present_state[4];
-int prev_state[4];
-unsigned long int present_ms = 0, last_ms = 0, delta_t = 0;
-void setup() {
+void init_encoders() {
   for (int i = 0; i < 4; i++)
   {
     pinMode (outputA[i], INPUT_PULLUP);
@@ -15,16 +6,19 @@ void setup() {
     attachPCINT(digitalPinToPCINT(outputA[i]), encode, CHANGE);
     prev_state[i] = digitalRead(outputA[i]);
   }
-  Serial.begin (115200);
   // Reads the initial state of the outputA
 }
-void loop() {
-    for(int i = 0; i < 4; i++)
+
+void get_velocity() {
+ // Serial.print("Actual Speed: ");
+  delta_t = millis() - previous_ms;
+  previous_ms = millis();
+  for (int i = 0; i < 4; i++)
   {
-Serial.print(counter[i]);
-Serial.print(" ");
+    velocity[i] = counter[i] * 1000 / (delta_t * 270); // rps
+    velocity[i] = velocity[i] * 60; // rpm
+  counter[i] = 0;
   }
-  Serial.println(" ");
 }
 
 void encode()

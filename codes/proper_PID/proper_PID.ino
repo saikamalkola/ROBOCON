@@ -103,8 +103,8 @@ String response = "";
 float data = 0;
 
 //encoder variables
-int outputA[4] = {50, A9, A12, A15};
-int outputB[4] = {A11, A8, A13, A14};
+int outputA[4] = {A9, A11, A13, A14};
+int outputB[4] = {A8, A10, A12, A15};
 float velocity[4] = {0};
 float counter[4] = {0};
 int present_state[4];
@@ -122,6 +122,7 @@ void setup()
   init_sensors();
   init_encoders();
   //calibrate();
+  dir = 0;
 }
 
 void loop() {
@@ -131,8 +132,8 @@ void loop() {
   cal_wheel_error();
   cal_wheel_PID();
   motors(w);
-  bluetooth_handler();
-  telemetry();
+ // bluetooth_handler();
+ // telemetry();
 }
 
 

@@ -2,10 +2,10 @@ void cal_wheel_error()
 {
   get_velocity();
   cal_avg();
-  for (int i = 0; i < 4; i++)
+  for (int i = 0; i < 3; i++)
     velocity[i] = average[i];
 
-  for (int i = 0; i < 4; i++)
+  for (int i = 0; i < 3; i++)
   {
     wheel_set_point[i] = w_average[i];
     wheel_error[i] = wheel_set_point[i] - velocity[i];
@@ -14,7 +14,7 @@ void cal_wheel_error()
 
 void cal_wheel_PID()
 {
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 3; i++) {
     wheel_P[i] = wheel_error[i];
     if ((wheel_I[i] + wheel_error[i]) > Imax)
     {
