@@ -4,6 +4,9 @@
 #define follow_speed 0.8
 #define DELAY 50
 
+//Controller Variables
+int control_data[9] = {0};
+
 int Emax = 20, Emin = -20;
 int dir = 1;
 /*
@@ -13,14 +16,14 @@ int dir = 1;
 */
 
 float base_speed =  follow_speed;
-float J[3][3] = {{-4.386, 7.6, 2.193}, {-4.386, -7.6, 2.193}, {13.1579, 0, 2.193}};
+float J[3][3] = {{ -4.386, 7.6, 2.193}, { -4.386, -7.6, 2.193}, {8.772, 0, 2.193}};
 /*
   Conversion Matrix
   -4.386  7.6 2.193
   -4.386 -7.6 2.193
    8.772  0   2.193
 */
-float Vsp[3] = {0, 0, -0.5};
+float Vsp[3] = { 0, 0, 0};
 //Vmax = 3.725
 //Vx,Vy,W
 float max_div = 255.0, max_rpm = 468.0;
@@ -39,8 +42,8 @@ uint8_t ser_enable[2] = {22, 30};   //F B
 uint8_t Jpulse[2] = {24, 32};       //F B
 
 //Motor Pins
-uint8_t motor_pin[3] = {6, 3, 12};
-uint8_t dir_pin[3] = {5, 2, 11};
+uint8_t motor_pin[3] = {3, 5, 7};
+uint8_t dir_pin[3] = {2, 4, 6};
 /*
   Pin mappings to motors
   0 - front right motor
@@ -58,7 +61,7 @@ char contrast = 100; //0 - 255
 char brightness = 0x04; //0 to 10
 char junction_width = 0x08; //0x02 to 0x08
 char threshold = 0x04; //0 to 7
-char line_mode = 0x00; //Light on Dark Background
+char line_option = 0x00; //Light on Dark Background
 char UART_Mode = 0x02; //byte of analog Value
 
 /*
@@ -94,13 +97,13 @@ float int_thresh = 30;
 float wheel_error[3] = {0, 0, 0};
 float wheel_last_error[3] = {0, 0, 0};
 
-float wheel_set_point[3] = { -100, -100, 100};
+float wheel_set_point[3] = { 0, 0, 0};
 float wheel_correction[3] = {0, 0, 0};
 
 
 //encoder variables
-int outputA[3] = {50, A9, A12};
-int outputB[3] = {A11, A8, A13};
+int outputA[3] = {A10, A12, A14};
+int outputB[3] = {A11, A13, A15};
 volatile float velocity[3] = {0};
 volatile float counter[3] = {0};
 volatile int present_state[3];
@@ -142,67 +145,140 @@ String cmd = "";
 String response = "";
 float data = 0;
 
+
+boolean line_mode = 0;
+boolean speed_mode = 0;
+boolean push_mode = 0;
+boolean us_mode = 0;
+boolean lift_mode = 0;
+int rack_data = 0;
+float damp = 0.001;
+
+float Vx = 512, Vy = 512, W = 512;
+
 void setup()
 {
   Serial.begin(115200);
   Serial.flush();
   Serial1.begin(9600);
   init_motors();
-  init_sensors();
-  init_encoders();
-  init_buff();
-  //calibrate();
-  last_ms = millis();
-  dir = -1;
+  //  init_sensors();
+  //  init_encoders();
+  //  init_buff();
+  //  //calibrate();
+  //  last_ms = millis();
+  //  dir = -1;
 }
-boolean ramp = 0;
 
 void loop() {
-  read_sensors();
-  cal_error();
-  cal_PID();
+  read_serial();
+  //telemetry();
+  //    for(int i = 0; i< 3; i++)
+  //  {
+  //    Serial.print(w[i]);
+  //    Serial.print(" ");
+  //  }
+  //  Serial.println(" ");
+  if (us_mode == 0)
+  {
+    actuate();
+  }
+  else
+  {
+  }
+}
+
+void read_serial()
+{
+  if (Serial.available() > 0)
+  {
+    response = Serial.readStringUntil('\n');
+    parse_response();
+  }
+}
+void actuate()
+{
+  //  read_sensors();
+  //  cal_error();
+  //  cal_PID();
   set_Vsp();
   cal_Vsp_average();
   matrix_mult();
-  cal_wheel_error();
-  cal_wheel_PID();
-  cal_ardW_avg();
-  motors(ardW_average);
-  telemetry();
+  //cal_wheel_error();
+  //cal_wheel_PID();
+  //cal_ardW_avg()
+  motors(w);
+
+}
+
+void parse_response()
+{
+  int l = response.length(), k = 0;
+  int limits[100] = {0};
+  String temp = " ";
+  for (int i = 0; i < l ; i++)
+  {
+    if (response[i] == '#')
+    {
+      limits[k] = i + 1;
+      k++;
+    }
+  }
+  for (int i = 0; i < (k - 1) ; i++)
+  {
+    temp = (response.substring(limits[i], limits[i + 1] - 1));
+    control_data[i] = temp.toInt();
+  }
+  us_mode = control_data[0];
+  line_mode = control_data[1];
+  speed_mode = control_data[2];
+  lift_mode = control_data[3];
+  push_mode = control_data[4];
+  rack_data = control_data[5];
+  Vy = (float)control_data[6];
+  Vx = (float)control_data[7];
+  W = (float)control_data[8];
+  if (speed_mode == 1)
+  {
+    damp = 0.004;
+  }
+  else
+  {
+    damp = 0.002;
+  }
 }
 
 void set_Vsp()
 {
-  if (dir == 0)
+  if (us_mode == 0)
   {
-    base_speed = 0;
-    Vsp[0] = -1 * PID[0];
-    Vsp[1] = 0;
-    Vsp[2] = -1 * PID[1];
+    if (line_mode == 1)
+    {
+      Vsp[0] = -1 * PID[0];
+      Vsp[1] = (Vy - 512) * damp;
+      Vsp[2] = -1 * PID[1];
+    }
+    else
+    {
+      Vsp[0] = (Vx - 512) * damp;
+      Vsp[1] = (Vy - 512) * damp;
+      Vsp[2] = (-W + 512) * damp;
+    }
   }
-  else {
-    base_speed = follow_speed;
-  }
-  switch (abs(dir))
+  else
   {
-    case 1:
-      if (dir > 0)
-      {
-        Vsp[0] = -1 * PID[0];
-        Vsp[1] = base_speed;
-        Vsp[2] = -1 * PID[1];
-      }
-      else
-      {
-        Vsp[0] = -1 * PID[0];
-        Vsp[1] = -1 * base_speed;
-        Vsp[2] = -1 * PID[1];
-      }
-      break;
-    default:
-      Vsp[0] = 0;
-      Vsp[1] = 0;
-      Vsp[2] = 0;
+    if (line_mode == 1)
+    {
+      Vsp[0] = -1 * PID[0];
+      Vsp[1] = (Vy - 512) * damp;
+      Vsp[2] = -1 * PID[1];
+    }
+    else
+    {
+      Vsp[0] = (Vx - 512) * damp;
+      Vsp[1] = (Vy - 512) * damp;
+      Vsp[2] = (-W + 512) * damp;
+    }
   }
 }
 
@@ -213,8 +289,6 @@ void cal_error()
   error[0] = temp / 2;
   temp = (sensor_data[0] - set_position) + (sensor_data[1] - set_position);
   error[1] = temp / 2;
-  //Serial.print("linear Y Error: " + String(error[0]) + " ");
-  //Serial.print("Angular Error: " + String(error[1]) + " ");
 }
 
 void cal_PID()
@@ -246,7 +320,7 @@ void matrix_mult()
     sum  = 0;
     for (int j = 0; j < 3; j++)
     {
-      sum += (J[i][j] * Vsp_average[j]);
+      sum += (J[i][j] * Vsp[j]);
     }
     w[i] = sum;
     w[i] = w[i] * 60 / (2 * pi); //rps to RpM
@@ -310,7 +384,7 @@ void set_sensor_settings()
   send_command('T', threshold);
   delay(DELAY);
   //   Setting line mode
-  send_command('L', line_mode);
+  send_command('L', line_option);
   delay(DELAY);
   // Setting UART ouput Mode
   send_command('D', UART_Mode);
@@ -358,6 +432,15 @@ void set_motor(uint8_t index, int motor_speed)
 {
   if (abs(motor_speed) < 5)
     motor_speed = 0;
+  if (abs(motor_speed) > 255)
+  {
+    if (motor_speed > 0)
+      motor_speed = 255;
+    else if (motor_speed < 0)
+    {
+      motor_speed = -255;
+    }
+  }
   if (motor_speed >= 0)
   {
     //clock wise direction

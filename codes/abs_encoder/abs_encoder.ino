@@ -49,7 +49,7 @@ uint16_t gray2binary(uint16_t num)
     //Serial.print(present_bit);
     present_bit = present_bit ^ last_bit;
     if (present_bit == 1)
-    {
+    {                             `q1                                                                                                                                               
       bin_data |= bit_msk;
     }
     last_bit = present_bit;
