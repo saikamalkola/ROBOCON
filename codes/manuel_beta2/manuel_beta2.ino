@@ -1,27 +1,15 @@
-//#include <SoftwareSerial.h>
-
-//#define rxPin A9
-//#define txPin A8
-
-//#include "PinChangeInterrupt.h"
-
-//SoftwareSerial mySerial(rxPin, txPin); // RX, Tx
-
 #define max_speed 0.8
 #define follow_speed 0.8
 #define DELAY 50
 
+//Indication Variables
+uint8_t led_pin = 25;
+uint8_t buzzer_pin = 27;
+
 //Controller Variables
 int control_data[9] = {0};
 
-int Emax = 20, Emin = -20;
-int dir = 1;
-/*
-  0   - Stop
-  1   - Front
-  -1  - Back
-*/
-
+float max_vel = 400;
 float base_speed =  follow_speed;
 float J[3][3] = {{ -4.386, 7.6, 2.193}, { -4.386, -7.6, 2.193}, {8.772, 0, 2.193}};
 /*
@@ -37,12 +25,6 @@ float max_div = 255.0, max_rpm = 468.0;
 float conv_factor[4] = {0.1334, 0.3667, 0.8, 2.6};
 float pi = 3.1416;
 float w[3] = {0, 0, 0};
-/*
-  0 - FL
-  1 - FR
-  2 - BL
-  3 - BR
-*/
 
 //Sensor Pins
 uint8_t ser_enable[2] = {30, 38};   //F B
@@ -97,68 +79,7 @@ float dist_last_error = 0;
 float dist_PID = 0;
 float dist_set_position = 1000;
 
-//Wheel PID Variables
-
-float max_vel = 400;
-float wheel_Kp[3] = {12, 12, 12}, wheel_Kd[3] = {150, 150, 150};
-float wheel_Ki[3] = {0.1, 0.1, 0.1};
-float wheel_P[3] = {0, 0, 0}, wheel_I[3] = {0, 0, 0}, wheel_D[3] = {0, 0, 0};
-
-//Anti WindUp
-float Imax = 10000 / 3;
-float Imin = -10000 / 3;
-float int_thresh = 30;
-float wheel_error[3] = {0, 0, 0};
-float wheel_last_error[3] = {0, 0, 0};
-
-float wheel_set_point[3] = { 0, 0, 0};
-float wheel_correction[3] = {0, 0, 0};
-
-
-//encoder variables
-int outputA[3] = {A10, A12, A14};
-int outputB[3] = {A11, A13, A15};
-volatile float velocity[3] = {0};
-volatile float counter[3] = {0};
-volatile int present_state[3];
-volatile int prev_state[3];
-
 unsigned long int present_ms = 0, previous_ms = 0, last_ms = 0, delta_t = 0;
-
-int Vsp_N = 3;
-
-float Vsp_readings[3][50];      // the readings from the analog input
-int Vsp_readIndex[3] = {0};              // the index of the current reading
-float Vsp_summation[3] = {0};                  // the running total
-float Vsp_average[3] = {0};                // the average
-
-int w_N = 5;
-
-float w_readings[3][50];      // the readings from the analog input
-int w_readIndex[3] = {0};              // the index of the current reading
-float w_summation[3] = {0};                  // the running total
-float w_average[3] = {0};                // the average
-
-int ardW_N = 5;
-
-float ardW_readings[3][50];      // the readings from the analog input
-int ardW_readIndex[3] = {0};              // the index of the current reading
-float ardW_summation[3] = {0};                  // the running total
-float ardW_average[3] = {0};                // the average
-
-int N = 50;
-
-float readings[3][50];      // the readings from the analog input
-int readIndex[3] = {0};              // the index of the current reading
-float summation[3] = {0};                  // the running total
-float average[3] = {0};                // the average
-
-//UI Variables
-int pid_sel = 0, log_sel = 0, sel_log_pid = 0, sel_line_pid = 0, sel_wheel_pid  = 0;
-String cmd = "";
-String response = "";
-float data = 0;
-
 
 boolean line_mode = 0;
 boolean speed_mode = 0;
@@ -172,48 +93,49 @@ float Vx = 512, Vy = 512, W = 512;
 
 char buff[32] = {0};
 
+//Ultrasonic Variables
 unsigned int MSByteDist = 0;
 unsigned int LSByteDist = 0;
 unsigned int mmDist = 0, distance = 0;
 
+String response = "";
 void setup()
 {
-  Serial.begin(115200);
+  Serial.begin(9600);
   Serial.flush();
-  Serial1.begin(9600);
+  Serial2.begin(9600);
+  init_indicators();
   init_motors();
   init_sensors();
-  //  init_encoders();
-  //  init_buff();
- calibrate();
-  //  last_ms = millis();
-  //  dir = -1;
+  //calibrate();
 }
 
-void loop() {
+void loop()
+{
   read_serial();
-  if (us_mode == 0)
+  read_sensors();
+  if (line_mode == 0)
   {
-    actuate();
+    digitalWrite(led_pin, LOW);
   }
-//  else
-//  {
-//    read_dist();
-//    cal_dist_error();
-//    cal_dist_PID();
-//    Vsp[1] = dist_PID;
-//    actuate();
-//  }
-Serial.print(us_mode);
-Serial.print(" ");
-Serial.print(line_mode);
-Serial.print(" ");
-Serial.print(PID[0]);
-Serial.print(" ");
-Serial.print(PID[1]);
-Serial.println(" ");
-//read_sensors();
+  else
+  {
+    digitalWrite(led_pin, HIGH);
+    //    cal_dist_error();
+    //      cal_dist_PID();
+    //      Vsp[1] = dist_PID;
+  }
+  actuate();
+  Serial.print(sensor_data[0]);
+  Serial.print(" ");
+  Serial.print(sensor_data[1]);
+  Serial.println(" ");
+}
 
+void init_indicators()
+{
+  pinMode(led_pin, OUTPUT);
+  pinMode(buzzer_pin, OUTPUT);
 }
 
 void cal_dist_PID()
@@ -236,24 +158,26 @@ void cal_dist_error()
 {
   dist_error = dist_set_position - distance;
 }
+
 void read_dist()
 {
-  Serial1.flush();
-  Serial1.write(0x55);
-
-  delay(500);
-
-  if (Serial.available() >= 2)
+  Serial2.flush();
+  Serial2.write(0x55);
+  delay(1);
+  if (Serial2.available() >= 2)
   {
-    MSByteDist = Serial1.read();
-    LSByteDist = Serial1.read();
+    MSByteDist = Serial2.read();
+    LSByteDist = Serial2.read();
     mmDist = MSByteDist * 256 + LSByteDist;
   }
-  if ((mmDist > 1) && (mmDist < 10000))
+  if ((mmDist > 1) && (mmDist < 100000))
   {
     distance = mmDist;
+    Serial.print("Distancia: ");
+    Serial.print(mmDist, DEC);
+    Serial.println(" mm");
   }
-  Serial1.flush();
+  Serial2.flush();
 }
 
 void read_serial()
@@ -262,25 +186,23 @@ void read_serial()
   {
     response = Serial.readStringUntil('\n');
     parse_response();
+    Serial.flush();
   }
 }
 
 void actuate()
 {
-//  read_sensors();
-//  cal_error();
-//  cal_PID();
-//    Vsp[0] = (Vx - 512) * damp;
-//    Vsp[1] = (Vy - 512) * damp;
-//    Vsp[2] = (-W + 512) * damp;
-  //cal_Vsp_average();
+  if (line_mode == 1)
+  {
+    cal_error();
+    cal_PID();
+  }
   set_Vsp();
+  //    Vsp[0] = (Vx - 512) * damp;
+  //    Vsp[1] = (Vy - 512) * damp;
+  //    Vsp[2] = (-W + 512) * damp;
   matrix_mult();
-  //cal_wheel_error();
-  //cal_wheel_PID();
-  //cal_ardW_avg()
   motors(w);
-
 }
 
 void parse_response()
@@ -288,6 +210,10 @@ void parse_response()
   int l = response.length(), k = 0;
   int limits[100] = {0};
   String temp = " ";
+  if (response[0] != '#')
+  {
+    return;
+  }
   for (int i = 0; i < l ; i++)
   {
     if (response[i] == '#')
@@ -301,12 +227,12 @@ void parse_response()
     temp = (response.substring(limits[i], limits[i + 1] - 1));
     control_data[i] = temp.toInt();
   }
-  //us_mode = control_data[0];
-  //line_mode = control_data[1];
+  us_mode = control_data[0];
+  line_mode = control_data[1];
   speed_mode = control_data[2];
- // lift_mode = control_data[3];
- // push_mode = control_data[4];
- // rack_data = control_data[5];
+  lift_mode = control_data[3];
+  push_mode = control_data[4];
+  rack_data = control_data[5];
   Vy = (float)control_data[6];
   Vx = (float)control_data[7];
   W = (float)control_data[8];
@@ -326,38 +252,30 @@ void set_Vsp()
   {
     if (line_mode == 1)
     {
-//      Vsp[0] = 1 * PID[0];
-//      Vsp[1] = (Vy - 512) * damp;
-//      Vsp[2] = 1 * PID[1];
-      Vsp[0] = 0;
-      Vsp[1] = 0;
-      Vsp[2] = 0;
+      Vsp[0] = 1 * PID[0];
+      Vsp[1] = (-Vy + 512) * damp;
+      Vsp[2] = -1 * PID[1];
     }
     else
     {
-      Vsp[0] = (Vx - 512) * damp;
-      Vsp[1] = (Vy - 512) * damp;
-      Vsp[2] = (-W + 512) * damp;
+      Vsp[0] = (-Vx + 512) * damp;
+      Vsp[1] = (-Vy + 512) * damp;
+      Vsp[2] = (W -  512) * damp;
     }
   }
   else
   {
     if (line_mode == 1)
     {
-//      Vsp[0] = 1 * PID[0];
-//      Vsp[2] = 1 * PID[1];
-      Vsp[0] = 0;
-      Vsp[1] = 0;
-      Vsp[2] = 0;
+      Vsp[0] = 1 * PID[0];
+      Vsp[1] = (-Vy + 512) * damp;
+      Vsp[2] = -1 * PID[1];
     }
     else
     {
-//      Vsp[0] = (Vx - 512) * damp;
-//      Vsp[1] = (Vy - 512) * damp;
-//      Vsp[2] = (-W + 512) * damp;
-      Vsp[0] = 0;
-      Vsp[1] = 0;
-      Vsp[2] = 0;
+      Vsp[0] = (-Vx + 512) * damp;
+      Vsp[1] = (-Vy + 512) * damp;
+      Vsp[2] = (W - 512) * damp;
     }
   }
 }
@@ -378,7 +296,7 @@ void cal_PID()
     P[i] = error[i];
     D[i] = error[i] - last_error[i];
 
-    PID[i] = (Kp[i] * P[i]) + (Kd[i] * D[i]) + (Ki[i] * I[i]);
+    PID[i] = (Kp[i] * P[i]) + (Kd[i] * D[i]);
     last_error[i] = error[i];
     if (abs(PID[i]) > max_speed)
     {
@@ -445,7 +363,7 @@ void matrix_mult()
 
 void read_sensors()
 {
-  int temp = 0;
+  int temp = 35;
   for (int i = 0; i < 2; i++)
   {
     digitalWrite(ser_enable[i], LOW);  // Set Serial3EN to LOW to request UART data
@@ -455,7 +373,6 @@ void read_sensors()
       sensor_data[i] = temp;
     digitalWrite(ser_enable[i], HIGH);   // Stop requesting for UART data
   }
-
   for (int i = 0; i < 2; i++)  {
     jun_data[i] = digitalRead(Jpulse[i]);
   }

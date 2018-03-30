@@ -7,6 +7,7 @@ volatile int Vx = 512, Vy = 512, W = 512;
 volatile uint8_t fast_button = 2, slow_button = 5;
 volatile boolean button_status[18] = {0};
 
+unsigned long last_ms = 0, update_ms = 10;
 boolean line_mode = 0;
 boolean speed_mode = 0;
 boolean push_mode = 0;
@@ -14,20 +15,26 @@ boolean us_mode = 0;
 boolean lift_mode = 0;
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   init_SPI();
   pinMode(fast_button, INPUT_PULLUP);
   pinMode(slow_button, INPUT_PULLUP);
+  last_ms = millis();
 }
 
 void loop() {
   //print_bin(data);
-  
+
   set_line_mode();
-  set_us_mode();set_speed_mode();
+  set_us_mode();
+  set_speed_mode();
   set_push_mode();
   set_lift_mode();
-  send_data();
+  if (millis() - last_ms > update_ms)
+  {
+    last_ms = millis();
+    send_data();
+  }
 }
 void print_data()
 {

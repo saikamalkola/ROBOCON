@@ -9,7 +9,7 @@ int tune_data[3] = {0, 0, 0};
 boolean line = 1;
 boolean wheel = 0;
 //Co-ordinates of Robot
-int Xi = 0, Yi = 0;
+int Xi = 0, Yi = -1;
 int Xp = Xi, Yp = Yi;
 int Xf = 0, Yf = 0;
 int imp_node_x[6] = {0, 0, 2, 0, 2, 5}, imp_node_y[6] = { -1, 0, 0, 1, 1, 1};
@@ -18,11 +18,11 @@ boolean junction_flag = 0;
 
 int upper_limit = 38, lower_limit = 33;
 #define max_speed 0.8
-#define follow_speed 0
+#define follow_speed 0.4
 #define DELAY 50
 
 int Emax = 20, Emin = -20;
-int dir = 2;
+int dir = 0;
 int jun_dir = 1;
 /*
   0   - Stop
@@ -89,7 +89,9 @@ char UART_Mode = 0x02; //byte of analog Value
 */
 //PID Variables
 //PID Variables
+//float Kp[3] = {0.0065, 0.0065, 0.01}, Kd[3] = {0.012, 0.012, 0.012}, Ki[3] = {0};
 float Kp[3] = {0.0065, 0.0065, 0.01}, Kd[3] = {0.012, 0.012, 0.012}, Ki[3] = {0};
+
 float P[3] = {0, 0}, I[3] = {0, 0}, D[3] = {0, 0};
 float PID[3] = {0, 0};
 float error[3] = {0, 0};
@@ -172,56 +174,65 @@ void setup()
   Serial.begin(115200); //For debugging on Serial Monitor
   Serial.flush();
   Serial1.begin(9600);
-  lcd.init();                      // initialize the lcd
-  lcd.init();
-  lcd.backlight();
+  //  lcd.init();                      // initialize the lcd
+  //  lcd.init();
+  //  lcd.backlight();
+
   init_motors();
   init_sensors();
-  init_encoders();
+  // init_encoders();
   init_buff();
-  //calibrate();
+  calibrate();
   last_ms = millis();
-  dir = 0;
+  while (1)
+  {
+    read_sensors();
+    Vsp[0] = -0.4;
+    Vsp[1] = -0.4;
+    Vsp[2] = 0;
+    cal_Vsp_average();
+    matrix_mult();
+    motors(w);
+    if (sensor_data[1] != 255)
+    {
+      sensor_data[0] = 35;
+      break;
+    }
+  }
+  dir = -1;
+  Xf = 0;
+  Yf = 0;
 }
-boolean ramp = 0;
 
 void loop() {
-//  read_sensors();
-
-  //    det_jun_dir();
-  //    if (jun_data[jun_dir] == 1)
-  //    {
-  //      update_position();
-  //      while (jun_data[jun_dir] != 0)
-  //      {
-  //        read_sensors();
-  //      }
-  //      junction_flag = 0;
-  //      junction_flag = det_junction();
-  //      if (junction_flag)
-  //      {
-  //        float w_2[4] = {0, 0, 0, 0};
-  //        motors(w_2);
-  //        jun_PID();
-  //      }
-  //    }
   read_sensors();
-    if (millis() - pres_ms > 100)
+  det_jun_dir();
+  if (jun_data[jun_dir] == 1)
   {
-    update_lcd();
-    tune_PID();
-    pres_ms = millis();
+    update_position();
+    while (jun_data[jun_dir] != 0)
+    {
+      read_sensors();
+    }
+    junction_flag = 0;
+    junction_flag = det_junction();
+    if (junction_flag)
+    {
+      float w_2[4] = {0, 0, 0, 0};
+      motors(w_2);
+      jun_PID();
+    }
   }
   cal_error();
   cal_PID();
   set_Vsp();
   cal_Vsp_average();
   matrix_mult();
-  cal_wheel_error();
-  cal_wheel_PID();
+  //  cal_wheel_error();
+  //  cal_wheel_PID();
   cal_ardW_avg();
   motors(w);
-  telemetry();
+ // telemetry();
 }
 
 void tune_PID()
@@ -247,6 +258,7 @@ void tune_PID()
     }
   }
 }
+
 void update_lcd()
 {
   if (line)
@@ -324,32 +336,19 @@ void jun_PID()
     motors(ardW_average);
     //    telemetry();
   }
-  while (!band_passed)
+  float w_5[4] = {0,0,0,0};
+  motors(w_5);
+  if (Xf == 0)
   {
-    read_sensors();
-    for (int i = 0; i < 4; i++)
-    {
-      if (sensor_data[i] <= upper_limit && sensor_data[i] >= lower_limit)
-      {
-        temp += 1;
-      }
-    }
-    if (temp == 4)
-    {
-      band_passed = 1;
-    }
-    cal_error();
-    cal_PID();
-    set_Vsp();
-    cal_Vsp_average();
-    matrix_mult();
-    cal_wheel_error();
-    cal_wheel_PID();
-    cal_ardW_avg();
-    motors(ardW_average);
-    //telemetry();
+    Xf = 1;
   }
+  else
+  {
+    Xf = 0;
+  }
+  Yf = 0;
   det_new_dir();
+  delay(20000);
 }
 
 void set_Vsp()
@@ -495,20 +494,20 @@ void reinit_sensor(int dir) {
   int junction_pull = 25; // 0 to 35
   switch (dir) {
     case 1:
-      sensor_data[2] = 35;//+junction_pull;//70
-      sensor_data[3] = 35;//-junction_pull;//0
+      sensor_data[2] = 70;//+junction_pull;//70
+      sensor_data[3] = 0;//-junction_pull;//0
       break;
     case 2:
-      sensor_data[0] = 35 - junction_pull;
-      sensor_data[1] = 35 + junction_pull;
+      sensor_data[0] = 0;// - junction_pull;
+      sensor_data[1] = 70;// + junction_pull;
       break;
     case -2:
-      sensor_data[0] = 35 + junction_pull;
-      sensor_data[1] = 35 - junction_pull;
+      sensor_data[0] = 70;// + junction_pull;
+      sensor_data[1] = 0;// - junction_pull;
       break;
     case -1:
-      sensor_data[2] = 35;//-junction_pull;
-      sensor_data[3] = 35;//+junction_pull;
+      sensor_data[2] = 0;//-junction_pull;
+      sensor_data[3] = 70;//+junction_pull;
       break;
 
   }

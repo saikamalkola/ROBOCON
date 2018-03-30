@@ -33,7 +33,7 @@ void encoder()
   data |= (~(shift_2)) & (0xFF);
   data |= (((~(shift_1)) & 0x03) << 8);
   if (prev_data != data)
-  { //    print_bin(gray2binary(data));
+  {
     Serial.println(gray2binary(data));
   }
   prev_data = data;
@@ -49,13 +49,12 @@ uint16_t gray2binary(uint16_t num)
     //Serial.print(present_bit);
     present_bit = present_bit ^ last_bit;
     if (present_bit == 1)
-    {                             `q1                                                                                                                                               
+    {                                                                                                                                           
       bin_data |= bit_msk;
     }
     last_bit = present_bit;
     bit_msk = bit_msk >> 1;
   }
-  //Serial.println(" ");
   return bin_data;
 }
 

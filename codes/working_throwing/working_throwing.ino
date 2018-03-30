@@ -20,122 +20,38 @@ float Kp = 0.05, Ki = 0.2, Kd = 20;
 float P = 0, I = 0, D = 0, PID = 0;
 float velocity = 0, counter = 0;
 
-String response = " ";
 float set_position = 500;
 unsigned long int present_ms = 0, previous_ms = 0, last_ms = 0, delta_t = 0;
-int throw_flag = 0;
-int pick_flag = 0;
-boolean zone_flag = 0;
-boolean zone = 0;
-int control_data[3] = {0};
-boolean flagP = 0, flagT = 0;
+
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   init_encoder();
   myservo.attach(3);
   pinMode(pwm_pin, OUTPUT);
   pinMode(dir_pin, OUTPUT);
-  delay(1);
 }
 boolean flag = 0;
-
 void loop() {
-  if (Serial.available() > 0)
-  {
-    response = Serial.readStringUntil('\n');
-    parse_response();
-  }
-      set_position = 950;
-    position_pid();
-  //delay(1000); 
-  if (throw_flag == 2 && flagT == 0)
-  {
-    flagT = 1;
-    throw_tz();
-  }
-  if (pick_flag == 3 && flagP == 0)
-  {
-    flagP = 1;
-    pick_ball();
-  }
-
-}
-
-void parse_response()
-{
-  int l = response.length(), k = 0;
-  int limits[100] = {0};
-  String temp = " ";
-  for (int i = 0; i < l ; i++)
-  {
-    if (response[i] == '#')
-    {
-      limits[k] = i + 1;
-      k++;
-    }
-  }
-  for (int i = 0; i < (k - 1) ; i++)
-  {
-    temp = (response.substring(limits[i], limits[i + 1] - 1));
-    control_data[i] = temp.toInt();
-    Serial.print(control_data[i]);
-    Serial.print(" ");
-  }
-  Serial.println("");
-  throw_flag = control_data[0];
-  pick_flag = control_data[1];
-  zone_flag = control_data[2];
-  //speed_mode = control_data[2];
-}
-
-void pick_ball()
-{
-  flagT = 0;
-  Serial.println("P");
-  Serial.flush();
-  delay(2000);
-  pick_flag = 0;
-  myservo.write(2000);
+  myservo.write(2400);
   last_ms = millis();
   while (1)
   {
-    set_position = 230;
+    set_position = 200;
     position_pid();
-    if (millis() - last_ms > 3000)
+    Serial.println("GRIPPING");
+    if (millis() - last_ms > 5000)
     {
       break;
     }
   }
-  delay(2000);
-  myservo.write(2400);
-  delay(5000);
-  last_ms = millis();
-  while (1)
-  {
-    set_position = 950;
-    position_pid();
-    if (millis() - last_ms > 2000)
-    {
-      break;
-    }
-  }
-  myservo.write(2400);
-  delay(5000);
-}
 
-void throw_tz()
-{
-  flagP = 0;
-  Serial.println("T");
-  Serial.flush();
-  delay(2000);
-  throw_flag  = 0;
   last_ms = millis();
   while (1)
   {
+    Serial.println("Throwing Initial");
     set_position = 950;
     position_pid();
-    if (millis() - last_ms > 2000)
+    if (millis() - last_ms > 5000)
     {
       break;
     }
@@ -143,20 +59,22 @@ void throw_tz()
   while (1)
   {
     motor(255);
-    if (data >= 480  && data <= 580)
+    Serial.println("Throwing");
+    if (data >= 580  && data <= 700)
     {
       myservo.write(2000);
       break;
     }
   }
   last_ms = millis();
+  Serial.println("Thrown");
   motor(0);
   while (1)
   {
     set_position = 350;
     max_speed = 60;
     position_pid();
-    if (millis() - last_ms > 1000)
+    if (millis() - last_ms > 5000)
     {
       break;
     }
@@ -167,7 +85,17 @@ void throw_tz()
   {
     set_position = 585;
     position_pid();
-    if (millis() - last_ms > 1000)
+    if (millis() - last_ms > 5000)
+    {
+      break;
+    }
+  }
+   last_ms = millis();
+  while (1)
+  {
+    set_position = 940;
+    position_pid();
+    if (millis() - last_ms > 5000)
     {
       break;
     }
@@ -175,14 +103,9 @@ void throw_tz()
   last_ms = millis();
   while (1)
   {
-    set_position = 940;
+    set_position = 260;
     position_pid();
-    if (millis() - last_ms > 1000)
-    {
-      break;
-    }
   }
-  motor(0);
 }
 
 void position_pid()
@@ -228,6 +151,8 @@ void position_pid()
       PID = -1 * max_speed;
     }
   }
+  //  Serial.println((String)data + " " + (String)error + " " + (String)(-1*PID));
+
   last_error = error;
   motor(-PID);
 }
@@ -284,7 +209,7 @@ void encoder()
     {
       counter = counter - (-data + prev_data);
     }
-    //  Serial.println(data);
+    Serial.println(data);
   }
   prev_data = data;
 }
