@@ -15,7 +15,7 @@ boolean us_mode = 0;
 boolean lift_mode = 0;
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   init_SPI();
   pinMode(fast_button, INPUT_PULLUP);
   pinMode(slow_button, INPUT_PULLUP);

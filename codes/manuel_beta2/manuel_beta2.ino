@@ -72,20 +72,20 @@ float set_position = 35;
   1     -     Angular Velocity PID
 */
 //distance PID Varibles
-float dist_Kp = 0, dist_Kd = 0, dist_Ki = 0;
+float dist_Kp = 0.025, dist_Kd = 0, dist_Ki = 0;
 float dist_P = 0, dist_I = 0, dist_D = 0;
 float dist_error = 0;
 float dist_last_error = 0;
 float dist_PID = 0;
-float dist_set_position = 1000;
+float dist_set_position = 300;
 
 unsigned long int present_ms = 0, previous_ms = 0, last_ms = 0, delta_t = 0;
 
 boolean line_mode = 0;
 boolean speed_mode = 0;
-boolean push_mode = 0;
-boolean us_mode = 0;
-boolean lift_mode = 0;
+boolean push_mode = 0, prev_push_mode = 0;
+boolean us_mode = 0, prev_us_mode = 0;
+boolean lift_mode = 0, prev_lift_mode = 0;
 int rack_data = 0;
 float damp = 0.001;
 
@@ -101,7 +101,7 @@ unsigned int mmDist = 0, distance = 0;
 String response = "";
 void setup()
 {
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.flush();
   Serial2.begin(9600);
   init_indicators();
@@ -121,15 +121,48 @@ void loop()
   else
   {
     digitalWrite(led_pin, HIGH);
-    //    cal_dist_error();
-    //      cal_dist_PID();
-    //      Vsp[1] = dist_PID;
   }
+  if (prev_push_mode != push_mode && push_mode == 1)
+  {
+    tone(buzzer_pin, 292, 200);
+    Serial.flush();
+
+  }
+  else if (prev_push_mode != push_mode && push_mode == 0)
+  {
+    Serial.flush();
+    tone(buzzer_pin, 292, 400);
+  }
+  if (prev_lift_mode != lift_mode && lift_mode == 1)
+  {
+    tone(buzzer_pin, 100, 200);
+    Serial.flush();
+
+  }
+  else if (prev_lift_mode != lift_mode && lift_mode == 0)
+  {
+    Serial.flush();
+    tone(buzzer_pin, 100, 400);
+  }
+  if (prev_us_mode != us_mode && us_mode == 1)
+  {
+    tone(buzzer_pin, 500, 200);
+    Serial.flush();
+
+  }
+  else if (prev_us_mode != us_mode && us_mode == 0)
+  {
+    Serial.flush();
+    tone(buzzer_pin, 500, 400);
+  }
+  prev_us_mode = us_mode;
+  prev_push_mode = push_mode;
+  prev_lift_mode = lift_mode;
   actuate();
-  Serial.print(sensor_data[0]);
-  Serial.print(" ");
-  Serial.print(sensor_data[1]);
-  Serial.println(" ");
+  //  Serial.print(sensor_data[0]);
+  //  Serial.print(" ");
+  //  Serial.print(sensor_data[1]);
+  //  Serial.println(" ");
 }
 
 void init_indicators()
@@ -146,12 +179,16 @@ void cal_dist_PID()
   dist_PID = ( dist_Kp *  dist_P) + ( dist_Kd *  dist_D) + ( dist_Ki *  dist_I);
   dist_last_error =  dist_error;
   if (abs( dist_PID) > max_speed)
+  {
     if ( dist_PID > 0)
+    {
       dist_PID = max_speed;
+    }
     else if ( dist_PID < 0)
     {
       dist_PID = -1 * max_speed;
     }
+  }
 }
 
 void cal_dist_error()
@@ -173,9 +210,6 @@ void read_dist()
   if ((mmDist > 1) && (mmDist < 100000))
   {
     distance = mmDist;
-    Serial.print("Distancia: ");
-    Serial.print(mmDist, DEC);
-    Serial.println(" mm");
   }
   Serial2.flush();
 }
@@ -196,6 +230,13 @@ void actuate()
   {
     cal_error();
     cal_PID();
+    if (us_mode)
+    {
+      read_dist();
+      //Serial.println(distance);
+      cal_dist_error();
+      cal_dist_PID();
+    }
   }
   set_Vsp();
   //    Vsp[0] = (Vx - 512) * damp;
@@ -268,7 +309,7 @@ void set_Vsp()
     if (line_mode == 1)
     {
       Vsp[0] = 1 * PID[0];
-      Vsp[1] = (-Vy + 512) * damp;
+      Vsp[1] = -dist_PID;;
       Vsp[2] = -1 * PID[1];
     }
     else
