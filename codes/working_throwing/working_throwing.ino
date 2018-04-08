@@ -1,12 +1,16 @@
-#include <ServoTimer2.h>
-
 #include <TimerOne.h>
 #include <SPI.h>
 
-ServoTimer2 myservo;
+int ir_pin = 4;
+int debug = 1;
+int start_bit = 2400;
+int bin_1 = 1200;
+int bin_0 = 600;
+int dataOut = 0;
+int guardTime = 300;
 
 int positions[2] = {220, 900};
-int max_speed = 20;
+int max_speed = 35;
 uint8_t pwm_pin = 5;
 uint8_t dir_pin = 6;
 
@@ -22,88 +26,71 @@ float velocity = 0, counter = 0;
 
 float set_position = 500;
 unsigned long int present_ms = 0, previous_ms = 0, last_ms = 0, delta_t = 0;
+boolean flag = 1;
 
 void setup() {
   Serial.begin(115200);
+  pinMode(ir_pin, OUTPUT);
+  digitalWrite(ir_pin, LOW);
   init_encoder();
-  myservo.attach(3);
   pinMode(pwm_pin, OUTPUT);
   pinMode(dir_pin, OUTPUT);
 }
-boolean flag = 0;
-void loop() {
-  myservo.write(2400);
-  last_ms = millis();
-  while (1)
-  {
-    set_position = 200;
-    position_pid();
-    Serial.println("GRIPPING");
-    if (millis() - last_ms > 5000)
-    {
-      break;
-    }
-  }
 
+void loop() {
   last_ms = millis();
   while (1)
   {
-    Serial.println("Throwing Initial");
-    set_position = 950;
+    set_position = 160;
+    position_pid();
+    //Serial.println("GRIPPING");
+    if (millis() - last_ms > 2500)
+    {
+      break;
+    }
+  }
+  last_ms = millis();
+  while (1)
+  {
+    set_position = 160;
+    position_pid();
+    //Serial.println("GRIPPING");
+    if (millis() - last_ms > 2500)
+    {
+      break;
+    }
+  }
+  tone(ir_pin,200,200);
+  last_ms = millis();
+  while (1)
+  {
+    // Serial.println("Throwing Initial");
+    set_position = 750;
     position_pid();
     if (millis() - last_ms > 5000)
     {
       break;
     }
   }
+  flag = 1;
+  motor(255);
   while (1)
   {
-    motor(255);
-    Serial.println("Throwing");
-    if (data >= 580  && data <= 700)
+    //Serial.println("Throwing");
+    if (data >= 300  && data <= 450)
     {
-      myservo.write(2000);
+      tone(ir_pin,200,200);
       break;
     }
   }
   last_ms = millis();
-  Serial.println("Thrown");
+  //Serial.println("Thrown");
   motor(0);
-  while (1)
-  {
-    set_position = 350;
-    max_speed = 60;
-    position_pid();
-    if (millis() - last_ms > 5000)
-    {
-      break;
-    }
-  }
-  max_speed = 20;
   last_ms = millis();
+
   while (1)
   {
-    set_position = 585;
-    position_pid();
-    if (millis() - last_ms > 5000)
-    {
-      break;
-    }
-  }
-   last_ms = millis();
-  while (1)
-  {
-    set_position = 940;
-    position_pid();
-    if (millis() - last_ms > 5000)
-    {
-      break;
-    }
-  }
-  last_ms = millis();
-  while (1)
-  {
-    set_position = 260;
+    set_position = 160;
     position_pid();
   }
 }
@@ -245,6 +232,8 @@ void print_bin(uint16_t val)
   }
   Serial.println("");
 }
+
+
 
 void init_encoder()
 {

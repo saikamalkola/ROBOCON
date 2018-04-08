@@ -1,7 +1,8 @@
-
-#include "PinChangeInterrupt.h"
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
+
+uint8_t buzzer_pin[2] = {25,27};
+uint8_t led_pin[2] = {29,31};
 
 LiquidCrystal_I2C lcd(0x27, 20, 2);
 int tuning_pin[3] = {A2, A3, A1};
@@ -11,7 +12,7 @@ boolean wheel = 0;
 //Co-ordinates of Robot
 int Xi = 0, Yi = -1;
 int Xp = Xi, Yp = Yi;
-int Xf = 0, Yf = 0;
+int Xf = 2, Yf = 0;
 int imp_node_x[6] = {0, 0, 2, 0, 2, 5}, imp_node_y[6] = { -1, 0, 0, 1, 1, 1};
 boolean band_passed = 0;
 boolean junction_flag = 0;
@@ -32,7 +33,7 @@ int jun_dir = 1;
   -2  - Right
 */
 
-float base_speed =  0;
+float base_speed =  0.4;
 float J[4][3] = {{13.1579, -13.1579, -8.4211}, {13.1579, 13.1579, 8.4211}, {13.1579, 13.1579, -8.4211}, {13.1579, -13.1579, 8.4211}};
 /*
   Conversion Matrix
@@ -131,7 +132,7 @@ float counter[4] = {0};
 int present_state[4];
 int prev_state[4];
 
-unsigned long int pres_ms = 0, prev_ms = 0, jun_time = 10000, present_ms = 0, previous_ms = 0, last_ms = 0, delta_t = 0;
+unsigned long int pres_ms = 0, prev_ms = 0, jun_time = 3000, present_ms = 0, previous_ms = 0, last_ms = 0, delta_t = 0;
 
 int Vsp_N = 3;
 
@@ -177,12 +178,12 @@ void setup()
   //  lcd.init();                      // initialize the lcd
   //  lcd.init();
   //  lcd.backlight();
-
+  init_indicators();
   init_motors();
   init_sensors();
   // init_encoders();
   init_buff();
-  calibrate();
+  //calibrate();
   last_ms = millis();
   while (1)
   {
@@ -190,6 +191,7 @@ void setup()
     Vsp[0] = -0.4;
     Vsp[1] = -0.4;
     Vsp[2] = 0;
+    set_Vsp();
     cal_Vsp_average();
     matrix_mult();
     motors(w);
@@ -200,7 +202,7 @@ void setup()
     }
   }
   dir = -1;
-  Xf = 0;
+  Xf = 2;
   Yf = 0;
 }
 
@@ -210,6 +212,10 @@ void loop() {
   if (jun_data[jun_dir] == 1)
   {
     update_position();
+    tone(buzzer_pin, 292, 200);
+    Serial.print(Xp);
+    Serial.print(" ");
+    Serial.println(Yp);
     while (jun_data[jun_dir] != 0)
     {
       read_sensors();
@@ -230,9 +236,9 @@ void loop() {
   matrix_mult();
   //  cal_wheel_error();
   //  cal_wheel_PID();
-  cal_ardW_avg();
+  // cal_ardW_avg();
   motors(w);
- // telemetry();
+  // telemetry();
 }
 
 void tune_PID()
@@ -330,25 +336,15 @@ void jun_PID()
     set_Vsp();
     cal_Vsp_average();
     matrix_mult();
-    cal_wheel_error();
-    cal_wheel_PID();
-    cal_ardW_avg();
-    motors(ardW_average);
+    //    cal_wheel_error();
+    //    cal_wheel_PID();
+    motors(w);
     //    telemetry();
   }
-  float w_5[4] = {0,0,0,0};
+  float w_5[4] = {0, 0, 0, 0};
   motors(w_5);
-  if (Xf == 0)
-  {
-    Xf = 1;
-  }
-  else
-  {
-    Xf = 0;
-  }
-  Yf = 0;
+  tone(buzzer_pin, 500, 1000);
   det_new_dir();
-  delay(20000);
 }
 
 void set_Vsp()
@@ -559,8 +555,8 @@ void set_sensor_settings()
   // Setting junction width
   send_command('J', junction_width);
   delay(DELAY);
-  send_command('T', threshold);
-  delay(DELAY);
+  //  send_command('T', threshold);
+  //  delay(DELAY);
   //   Setting line mode
   send_command('L', line_mode);
   delay(DELAY);
@@ -616,6 +612,17 @@ void set_motor(uint8_t index, int motor_speed)
     analogWrite(motor_pin[index], -1 * motor_speed);
   }
 
+}
+
+void init_indicators()
+{
+  for(int i = 0; i < 2; i++)
+  {
+  pinMode(led_pin[i], OUTPUT);
+  digitalWrite(led_pin[i],LOW);
+  pinMode(buzzer_pin[i], OUTPUT);
+  digitalWrite(buzzer_pin[i],LOW);
+  }
 }
 
 void init_motors()

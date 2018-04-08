@@ -124,7 +124,7 @@ void loop()
   }
   if (prev_push_mode != push_mode && push_mode == 1)
   {
-    tone(buzzer_pin, 292, 200);
+    tone(buzzer_pin, 292, 1000);
     Serial.flush();
 
   }

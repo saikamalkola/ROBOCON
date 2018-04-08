@@ -23,7 +23,7 @@ void setup()
 {
   init_sols();
   init_motors();
-  Serial.begin(9600);
+  Serial.begin(115200);
 }
 
 void loop() // run over and over

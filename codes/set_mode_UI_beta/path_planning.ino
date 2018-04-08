@@ -13,7 +13,11 @@ boolean det_junction()
 
 void det_new_dir()
 {
-  if (Xp < Xf && Yp == Yf)
+  if(Xp == Xf && Yp == Yf)
+  {
+    dir = 0;
+  }
+  else if (Xp < Xf && Yp == Yf)
   {
     dir = -2;
     //Right follow
