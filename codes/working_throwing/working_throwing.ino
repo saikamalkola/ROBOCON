@@ -10,7 +10,7 @@ int dataOut = 0;
 int guardTime = 300;
 
 int positions[2] = {220, 900};
-int max_speed = 35;
+int max_speed = 40;
 uint8_t pwm_pin = 5;
 uint8_t dir_pin = 6;
 
@@ -20,13 +20,16 @@ volatile uint16_t temp, prev_data = 0, data = 0;
 volatile boolean present_bit = 0, last_bit = 0;
 
 float error = 0, last_error = 0, set_point = 0;
-float Kp = 0.05, Ki = 0.2, Kd = 20;
+float Kp = 0.09, Ki = 0.35, Kd = 26;
 float P = 0, I = 0, D = 0, PID = 0;
 float velocity = 0, counter = 0;
 
 float set_position = 500;
 unsigned long int present_ms = 0, previous_ms = 0, last_ms = 0, delta_t = 0;
 boolean flag = 1;
+boolean throw_flag = 0;
+boolean pick_flag = 0;
+int prev_inst = 0, inst = 0;
 
 void setup() {
   Serial.begin(115200);
@@ -38,6 +41,59 @@ void setup() {
 }
 
 void loop() {
+  if(inst == 2)
+  {
+  set_position = 750;
+  position_pid();
+  }
+  else if(inst == 3)
+  {
+  set_position = 160;
+  position_pid();    
+  }
+  parse_serial();
+  if (prev_inst != inst && (inst == 2 || inst == 3))
+  {
+    if (inst == 2)
+    {
+      grip_inst();
+    }
+    if (inst == 3)
+    {
+      throw_inst();
+    }
+  }
+  prev_inst = inst;
+}
+
+void parse_serial()
+{
+  if (Serial.available() > 0)
+  {
+    int temp = 0;
+    temp = Serial.parseInt();
+    if (temp == 2 || temp == 3)
+    {
+      inst = temp;
+    }
+    else
+    {
+      return;
+    }
+    //    if (inst == 2)
+    //    {
+    //      pick_flag = 1;
+    //      throw_flag = 0;
+    //    }
+    //    else if (inst == 3)
+    //    {
+    //      throw_flag = 1;
+    //    }
+    Serial.flush();
+  }
+}
+void grip_inst()
+{
   last_ms = millis();
   while (1)
   {
@@ -49,6 +105,7 @@ void loop() {
       break;
     }
   }
+  tone(ir_pin, 100, 300);
   last_ms = millis();
   while (1)
   {
@@ -60,7 +117,6 @@ void loop() {
       break;
     }
   }
-  tone(ir_pin,200,200);
   last_ms = millis();
   while (1)
   {
@@ -72,14 +128,19 @@ void loop() {
       break;
     }
   }
-  flag = 1;
+  Serial.println("2");
+}
+
+void throw_inst()
+{
   motor(255);
   while (1)
   {
+    //390 430
     //Serial.println("Throwing");
-    if (data >= 300  && data <= 450)
+    if (data >= 415  && data <= 440)
     {
-      tone(ir_pin,200,200);
+      tone(ir_pin, 300, 300);
       break;
     }
   }
@@ -87,12 +148,17 @@ void loop() {
   //Serial.println("Thrown");
   motor(0);
   last_ms = millis();
-
   while (1)
   {
     set_position = 160;
     position_pid();
+    //Serial.println("GRIPPING");
+    if (millis() - last_ms > 2500)
+    {
+      break;
+    }
   }
+  Serial.println("3");
 }
 
 void position_pid()
@@ -196,7 +262,7 @@ void encoder()
     {
       counter = counter - (-data + prev_data);
     }
-    Serial.println(data);
+ //   Serial.println(data);
   }
   prev_data = data;
 }

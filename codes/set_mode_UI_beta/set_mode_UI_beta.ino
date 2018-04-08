@@ -1,8 +1,10 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
-uint8_t buzzer_pin[2] = {25,27};
-uint8_t led_pin[2] = {29,31};
+uint8_t led_pin = 25;
+uint8_t buzzer_pin = 27;
+
+int prev_inst = 0, inst = 0;
 
 LiquidCrystal_I2C lcd(0x27, 20, 2);
 int tuning_pin[3] = {A2, A3, A1};
@@ -12,7 +14,7 @@ boolean wheel = 0;
 //Co-ordinates of Robot
 int Xi = 0, Yi = -1;
 int Xp = Xi, Yp = Yi;
-int Xf = 2, Yf = 0;
+int Xf = 0, Yf = 0;
 int imp_node_x[6] = {0, 0, 2, 0, 2, 5}, imp_node_y[6] = { -1, 0, 0, 1, 1, 1};
 boolean band_passed = 0;
 boolean junction_flag = 0;
@@ -202,7 +204,7 @@ void setup()
     }
   }
   dir = -1;
-  Xf = 2;
+  Xf = 0;
   Yf = 0;
 }
 
@@ -212,7 +214,7 @@ void loop() {
   if (jun_data[jun_dir] == 1)
   {
     update_position();
-    tone(buzzer_pin, 292, 200);
+    //tone(buzzer_pin, 292, 200);
     Serial.print(Xp);
     Serial.print(" ");
     Serial.println(Yp);
@@ -344,7 +346,62 @@ void jun_PID()
   float w_5[4] = {0, 0, 0, 0};
   motors(w_5);
   tone(buzzer_pin, 500, 1000);
+  if (Xp == 0 && Yp == 0)
+  {
+    while (1)
+    {
+      Serial.println("2");
+      parse_serial();
+      if (prev_inst != inst && (inst == 2 || inst == 3))
+      {
+        if (inst == 2)
+        {
+          break;
+        }
+      }
+      prev_inst = inst;
+    }
+    Xf = 2;
+    Yf = 0;
+  }
+  else if (Xp == 2 && Yp == 0)
+  {
+    while (1)
+    {
+      Serial.println("3");
+      parse_serial();
+      if (prev_inst != inst && (inst == 2 || inst == 3))
+      {
+        if (inst == 3)
+        {
+          break;
+        }
+      }
+      prev_inst = inst;
+    }
+    Xf = 0;
+    Yf = 0;
+  }
+  delay(1000);
   det_new_dir();
+}
+
+void parse_serial()
+{
+  if (Serial.available() > 0)
+  {
+    int temp = 0;
+    temp = Serial.parseInt();
+    if (temp == 2 || temp == 3)
+    {
+      inst = temp;
+    }
+    else
+    {
+      return;
+    }
+    Serial.flush();
+  }
 }
 
 void set_Vsp()
@@ -616,13 +673,10 @@ void set_motor(uint8_t index, int motor_speed)
 
 void init_indicators()
 {
-  for(int i = 0; i < 2; i++)
-  {
-  pinMode(led_pin[i], OUTPUT);
-  digitalWrite(led_pin[i],LOW);
-  pinMode(buzzer_pin[i], OUTPUT);
-  digitalWrite(buzzer_pin[i],LOW);
-  }
+  pinMode(led_pin, OUTPUT);
+  digitalWrite(led_pin, LOW);
+  pinMode(buzzer_pin, OUTPUT);
+  digitalWrite(buzzer_pin, LOW);
 }
 
 void init_motors()
